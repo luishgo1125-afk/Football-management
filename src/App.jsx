@@ -420,6 +420,7 @@ export default function App() {
   const [datosEquipoCargados, setDatosEquipoCargados] = useState(false); // evita guardar antes de terminar de leer el roster guardado
   const [partidosLiga, setPartidosLiga] = useState([]); // calendario único de la liga activa (compartido)
   const [fechaLimiteRoster, setFechaLimiteRoster] = useState(""); // fecha límite para que los equipos registren jugadores
+  const [ligaFoto, setLigaFoto] = useState(null); // foto de la liga (editable solo por el organizador)
   const [tab, setTab] = useState("plantilla");
   const [errorFoto, setErrorFoto] = useState("");
 
@@ -444,6 +445,7 @@ export default function App() {
   const [fotoNueva, setFotoNueva] = useState(null);
   const inputFotoNueva = useRef(null);
   const inputFotoEquipo = useRef(null);
+  const inputFotoLiga = useRef(null);
   const inputFotoModalJugador = useRef(null);
   const inputFotoModalEquipo = useRef(null);
 
@@ -496,16 +498,11 @@ export default function App() {
   const [errorEliminarLiga, setErrorEliminarLiga] = useState("");
   const [eliminandoLiga, setEliminandoLiga] = useState(false);
 
-  // El organizador puede ver la plantilla (roster) de cualquier equipo de la liga, bajo demanda
+  // El organizador puede ver el roster de cualquier equipo de la liga, bajo demanda
   const [rostersAbiertos, setRostersAbiertos] = useState({}); // { [equipoId]: bool }
   const [rostersEquipos, setRostersEquipos] = useState({}); // { [equipoId]: { jugadores: [], cargando: bool, cargado: bool } }
-  const toggleRosterEquipo = async (equipoId) => {
-    const abrirAhora = !rostersAbiertos[equipoId];
-    setRostersAbiertos((prev) => ({ ...prev, [equipoId]: abrirAhora }));
-    if (!abrirAhora) return;
-    const yaCargado = rostersEquipos[equipoId]?.cargado;
-    if (yaCargado) return;
-    setRostersEquipos((prev) => ({ ...prev, [equipoId]: { jugadores: [], cargando: true, cargado: false } }));
+  const cargarRosterEquipo = async (equipoId) => {
+    setRostersEquipos((prev) => ({ ...prev, [equipoId]: { jugadores: prev[equipoId]?.jugadores || [], cargando: true, cargado: false } }));
     try {
       const res = await window.storage.get(`mi-equipo-datos-${ligaId}-${equipoId}`, true);
       const mio = res?.value ? JSON.parse(res.value) : { jugadores: [] };
@@ -514,6 +511,17 @@ export default function App() {
       setRostersEquipos((prev) => ({ ...prev, [equipoId]: { jugadores: [], cargando: false, cargado: true } }));
     }
   };
+  const toggleRosterEquipo = (equipoId) => {
+    setRostersAbiertos((prev) => ({ ...prev, [equipoId]: !prev[equipoId] }));
+  };
+  // Precarga el conteo de jugadores de todos los equipos en cuanto se entra al tab Roster,
+  // así el número se ve de inmediato sin tener que expandir cada equipo.
+  useEffect(() => {
+    if (tab !== "roster" || sesion?.tipo !== "creador" || !ligaId) return;
+    equipos.forEach((eq) => {
+      if (!rostersEquipos[eq.id]) cargarRosterEquipo(eq.id);
+    });
+  }, [tab, sesion, ligaId, equipos]);
 
   // Modo claro / oscuro. Preferencia guardada solo en este dispositivo (no es data de la liga).
   const [modoClaro, setModoClaro] = useState(() => {
@@ -560,10 +568,19 @@ export default function App() {
     if (!cargado || !ligaId) return;
     (async () => {
       try {
-        await window.storage.set(`liga-datos-${ligaId}`, JSON.stringify({ nombre: ligaNombre, pinCreador, equipos, partidosLiga, fechaLimiteRoster }), true);
+        await window.storage.set(`liga-datos-${ligaId}`, JSON.stringify({ nombre: ligaNombre, pinCreador, equipos, partidosLiga, fechaLimiteRoster, foto: ligaFoto }), true);
+        // Mantiene sincronizado el índice liviano (nombre + foto) que se usa en el selector de ligas del login
+        const res = await window.storage.get("ligas-indice", true).catch(() => null);
+        const lista = res?.value ? JSON.parse(res.value) : [];
+        const entrada = lista.find((l) => l.id === ligaId);
+        if (entrada && (entrada.nombre !== ligaNombre || entrada.foto !== ligaFoto)) {
+          const actualizada = lista.map((l) => (l.id === ligaId ? { ...l, nombre: ligaNombre, foto: ligaFoto } : l));
+          await window.storage.set("ligas-indice", JSON.stringify(actualizada), true);
+          setLigasIndice(actualizada);
+        }
       } catch (e) { console.error("Error guardando liga", e); }
     })();
-  }, [ligaId, ligaNombre, pinCreador, equipos, partidosLiga, fechaLimiteRoster, cargado]);
+  }, [ligaId, ligaNombre, pinCreador, equipos, partidosLiga, fechaLimiteRoster, ligaFoto, cargado]);
 
   // Guardar mi plantilla/jugadas personales (solo si tengo sesión de equipo).
   // Se guarda como dato COMPARTIDO de la liga (bajo una llave única por equipo) para que
@@ -602,6 +619,7 @@ export default function App() {
       setEquipos(liga.equipos ?? []);
       setPartidosLiga(liga.partidosLiga ?? []);
       setFechaLimiteRoster(liga.fechaLimiteRoster ?? "");
+      setLigaFoto(liga.foto ?? null);
       return liga;
     }
     return null;
@@ -655,14 +673,14 @@ export default function App() {
     const nuevoId = uid();
     try {
       const lista = ligasIndice || (await cargarIndiceLigas());
-      const nuevaLista = [...lista, { id: nuevoId, nombre: nombreLigaInput.trim() }];
+      const nuevaLista = [...lista, { id: nuevoId, nombre: nombreLigaInput.trim(), foto: null }];
       await window.storage.set("ligas-indice", JSON.stringify(nuevaLista), true);
       setLigasIndice(nuevaLista);
-      await window.storage.set(`liga-datos-${nuevoId}`, JSON.stringify({ nombre: nombreLigaInput.trim(), pinCreador: pinCreadorInput.trim(), equipos: [], partidosLiga: [], fechaLimiteRoster: "" }), true);
+      await window.storage.set(`liga-datos-${nuevoId}`, JSON.stringify({ nombre: nombreLigaInput.trim(), pinCreador: pinCreadorInput.trim(), equipos: [], partidosLiga: [], fechaLimiteRoster: "", foto: null }), true);
       setLigaId(nuevoId);
       setLigaNombre(nombreLigaInput.trim());
       setPinCreador(pinCreadorInput.trim());
-      setEquipos([]); setPartidosLiga([]); setFechaLimiteRoster("");
+      setEquipos([]); setPartidosLiga([]); setFechaLimiteRoster(""); setLigaFoto(null);
       const s = { tipo: "creador", ligaId: nuevoId };
       setSesion(s);
       setTab("calendario");
@@ -714,7 +732,7 @@ export default function App() {
     setMenuEquiposAbierto(false);
     setJugadores([]); setJugadas([]);
     setDatosEquipoCargados(false);
-    setLigaId(null); setLigaNombre(""); setPinCreador(""); setEquipos([]); setPartidosLiga([]); setFechaLimiteRoster("");
+    setLigaId(null); setLigaNombre(""); setPinCreador(""); setEquipos([]); setPartidosLiga([]); setFechaLimiteRoster(""); setLigaFoto(null);
     setLigasIndice(null); setLigaElegida(null);
     setPantallaLogin("menu"); setContextoLogin(null);
     setNombreLigaInput(""); setPinCreadorInput(""); setPinEquipoInput(""); setErrorLogin("");
@@ -801,8 +819,21 @@ export default function App() {
     e.target.value = "";
   };
 
+  const onFotoLigaChange = async (e) => {
+    const f = e.target.files?.[0];
+    if (!f) return;
+    setErrorFoto("");
+    try {
+      const dataUrl = await resizeImagen(f, 240);
+      setLigaFoto(dataUrl);
+    } catch (err) {
+      setErrorFoto(err.message || "No se pudo cargar la imagen.");
+    }
+    e.target.value = "";
+  };
+
   // ---- modal de jugador guardado (ver / editar) ----
-  const abrirVistaJugador = (j) => setJugadorModal({ ...j, modo: "ver" });
+  const abrirVistaJugador = (j, soloLectura = false) => setJugadorModal({ ...j, modo: "ver", soloLectura });
   const cerrarModalJugador = () => setJugadorModal(null);
   const pasarAEditarJugador = () => setJugadorModal((m) => ({ ...m, modo: "editar" }));
   const actualizarCampoModal = (campo, valor) => setJugadorModal((m) => ({ ...m, [campo]: valor }));
@@ -1156,6 +1187,8 @@ export default function App() {
       .f-display { font-family:'Barlow Condensed',sans-serif; letter-spacing:0.02em; }
       .f-mono { font-family:'JetBrains Mono',monospace; }
       body, input, select, button { font-family:'Inter',sans-serif; }
+      /* Evita el zoom automático de iOS/Android al enfocar campos (ocurre si el font-size es menor a 16px) */
+      input, select, textarea { font-size: 16px !important; }
     `}</style>
   );
 
@@ -1181,6 +1214,12 @@ export default function App() {
           {modoClaro ? <MoonIcon /> : <SunIcon />}
         </button>
         <div className="max-w-md w-full mx-auto px-4 py-10 pt-16">
+          {ligaElegida?.foto && (
+            <div className="w-16 h-16 rounded-full overflow-hidden mx-auto mb-3 flex items-center justify-center"
+              style={{ background: activeTheme.surface2, border: `1px solid ${activeTheme.border}` }}>
+              <img src={ligaElegida.foto} alt="" className="w-full h-full object-cover" />
+            </div>
+          )}
           <div className="f-display text-3xl font-bold text-center mb-1" style={{ color: activeTheme.text }}>
             {ligaElegida ? ligaElegida.nombre : "Roster & Playbook"}
           </div>
@@ -1220,9 +1259,13 @@ export default function App() {
               )}
               {(ligasIndice || []).map((l) => (
                 <button key={l.id} onClick={() => elegirLigaExistente(l)}
-                  className="w-full text-left py-3 px-4 rounded-lg text-sm font-semibold"
+                  className="w-full flex items-center gap-3 text-left py-3 px-4 rounded-lg text-sm font-semibold"
                   style={{ background: activeTheme.surface, color: activeTheme.text, border: `1px solid ${activeTheme.border}` }}>
-                  {l.nombre}
+                  <div className="w-9 h-9 rounded-full overflow-hidden shrink-0 flex items-center justify-center"
+                    style={{ background: activeTheme.surface2, border: `1px solid ${activeTheme.border}` }}>
+                    {l.foto ? <img src={l.foto} alt="" className="w-full h-full object-cover" /> : null}
+                  </div>
+                  <span className="flex-1 truncate">{l.nombre}</span>
                 </button>
               ))}
               {contextoLogin === "organizador" && (
@@ -1296,16 +1339,33 @@ export default function App() {
               </button>
             </>
           )}
+          {sesion.tipo === "creador" && (
+            <>
+              <input type="file" accept="image/*" ref={inputFotoLiga} className="hidden" onChange={onFotoLigaChange} />
+              <button onClick={() => inputFotoLiga.current?.click()}
+                className="w-12 h-12 rounded-full flex items-center justify-center shrink-0 overflow-hidden"
+                style={{ background: activeTheme.surface2, border: `1px dashed ${activeTheme.border}` }}>
+                {ligaFoto ? <img src={ligaFoto} alt="" className="w-full h-full object-cover" />
+                  : <span className="text-lg" style={{ color: activeTheme.textDim }}>+</span>}
+              </button>
+            </>
+          )}
+          {sesion.tipo === "visitante" && ligaFoto && (
+            <div className="w-12 h-12 rounded-full overflow-hidden shrink-0 flex items-center justify-center"
+              style={{ background: activeTheme.surface2, border: `1px solid ${activeTheme.border}` }}>
+              <img src={ligaFoto} alt="" className="w-full h-full object-cover" />
+            </div>
+          )}
           {sesion.tipo === "equipo" ? (
             <input value={equipo} onChange={(e) => actualizarMiEquipo({ nombre: e.target.value })}
-              className="f-display text-2xl bg-transparent outline-none w-full font-bold"
+              className="f-display text-3xl bg-transparent outline-none w-full font-bold"
               style={{ color: activeTheme.text }} />
           ) : sesion.tipo === "creador" ? (
             <input value={ligaNombre} onChange={(e) => setLigaNombre(e.target.value)}
-              className="f-display text-2xl bg-transparent outline-none w-full font-bold"
+              className="f-display text-3xl bg-transparent outline-none w-full font-bold"
               style={{ color: activeTheme.text }} />
           ) : (
-            <div className="f-display text-2xl font-bold w-full truncate" style={{ color: activeTheme.text }}>{ligaNombre || "Visitante"}</div>
+            <div className="f-display text-3xl font-bold w-full truncate" style={{ color: activeTheme.text }}>{ligaNombre || "Visitante"}</div>
           )}
 
           <button onClick={toggleModo}
@@ -1392,7 +1452,9 @@ export default function App() {
         {/* tabs */}
         <div className="flex gap-1 mb-6 p-1 rounded-lg" style={{ background: activeTheme.surface, border: `1px solid ${activeTheme.border}` }}>
           {(sesion.tipo === "equipo"
-            ? [["plantilla", "Plantilla"], ["jugadas", "Playbook"], ["calendario", "Calendario"], ["liga", "Liga"]]
+            ? [["plantilla", "Roster"], ["jugadas", "Playbook"], ["calendario", "Calendario"], ["liga", "Liga"]]
+            : sesion.tipo === "creador"
+            ? [["calendario", "Calendario"], ["roster", "Roster"], ["liga", "Liga"]]
             : [["calendario", "Calendario"], ["liga", "Liga"]]
           ).map(([key, label]) => (
             <button key={key} onClick={() => { setTab(key); cerrarEditor(); cerrarVistaJugada(); }}
@@ -1407,7 +1469,7 @@ export default function App() {
         {tab === "plantilla" && (
           <div>
             <div className="flex items-center justify-between mb-4">
-              <div className="f-display text-lg font-bold uppercase" style={{ color: activeTheme.text }}>Plantilla</div>
+              <div className="f-display text-lg font-bold uppercase" style={{ color: activeTheme.text }}>Roster</div>
               <button onClick={() => setModalJugadorAbierto(true)} disabled={fechaLimiteRosterPasada}
                 className="w-9 h-9 rounded-full flex items-center justify-center text-lg font-bold shrink-0"
                 style={{ background: activeTheme.text, color: activeTheme.bg, opacity: fechaLimiteRosterPasada ? 0.4 : 1 }}>+</button>
@@ -1526,9 +1588,11 @@ export default function App() {
                   </div>
                   <div className="flex gap-2">
                     <button onClick={cerrarModalJugador} className="flex-1 py-3 rounded-lg font-semibold text-sm"
-                      style={{ background: activeTheme.surface2, color: activeTheme.text, border: `1px solid ${activeTheme.border}` }}>Cerrar</button>
-                    <button onClick={pasarAEditarJugador} className="flex-1 py-3 rounded-lg font-semibold text-sm"
-                      style={{ background: activeTheme.text, color: activeTheme.bg }}>Editar</button>
+                      style={{ background: jugadorModal.soloLectura ? activeTheme.text : activeTheme.surface2, color: jugadorModal.soloLectura ? activeTheme.bg : activeTheme.text, border: `1px solid ${activeTheme.border}` }}>Cerrar</button>
+                    {!jugadorModal.soloLectura && (
+                      <button onClick={pasarAEditarJugador} className="flex-1 py-3 rounded-lg font-semibold text-sm"
+                        style={{ background: activeTheme.text, color: activeTheme.bg }}>Editar</button>
+                    )}
                   </div>
                 </div>
               ) : (
@@ -1874,28 +1938,6 @@ export default function App() {
         {/* ============ TAB LIGA (tabla + equipos) ============ */}
         {tab === "liga" && (
           <div>
-            {sesion.tipo === "creador" && (
-              <div className="rounded-xl p-4 mb-6" style={{ background: activeTheme.surface, border: `1px solid ${activeTheme.border}` }}>
-                <div className="text-[11px] f-mono uppercase tracking-wide mb-2" style={{ color: activeTheme.textDim }}>Fecha límite para registrar jugadores</div>
-                <div className="flex gap-2">
-                  <input type="date" value={fechaLimiteRoster} onChange={(e) => setFechaLimiteRoster(e.target.value)}
-                    className="flex-1 rounded-md px-3 py-2 text-sm outline-none"
-                    style={{ background: activeTheme.surface2, color: activeTheme.text, border: `1px solid ${activeTheme.border}` }} />
-                  {fechaLimiteRoster && (
-                    <button onClick={() => setFechaLimiteRoster("")} className="px-3 rounded-md text-xs font-semibold"
-                      style={{ background: activeTheme.surface2, color: activeTheme.danger, border: `1px solid ${activeTheme.border}` }}>Quitar</button>
-                  )}
-                </div>
-                <div className="text-[11px] mt-2" style={{ color: activeTheme.textDim }}>
-                  {fechaLimiteRoster
-                    ? (fechaLimiteRosterPasada
-                        ? `Venció el ${formatearFecha(fechaLimiteRoster)} — los equipos ya no pueden agregar jugadores.`
-                        : `Los equipos podrán agregar jugadores hasta el ${formatearFecha(fechaLimiteRoster)}.`)
-                    : "Sin fecha límite — los equipos pueden registrar jugadores en cualquier momento."}
-                </div>
-              </div>
-            )}
-
             <div className="f-display text-lg font-bold uppercase mb-4" style={{ color: activeTheme.text }}>Tabla de posiciones</div>
 
             <div className="rounded-xl overflow-hidden mb-6" style={{ background: activeTheme.surface, border: `1px solid ${activeTheme.border}` }}>
@@ -1929,86 +1971,108 @@ export default function App() {
             <div className="text-[11px]" style={{ color: activeTheme.textDim }}>
               La tabla se calcula automáticamente a partir de los marcadores guardados en el Calendario. Los juegos BYE no se contabilizan.
             </div>
+          </div>
+        )}
 
-            {sesion.tipo === "creador" && (
-              <div className="mt-8">
-                <div className="f-display text-lg font-bold uppercase mb-4" style={{ color: activeTheme.text }}>Plantillas por equipo</div>
-                {equipos.length === 0 && (
-                  <div className="text-sm py-3" style={{ color: activeTheme.textDim }}>Todavía no hay equipos en la liga.</div>
+        {/* ============ TAB ROSTER (roster de todos los equipos, solo organizador) ============ */}
+        {tab === "roster" && sesion.tipo === "creador" && (
+          <div>
+            <div className="rounded-xl p-4 mb-6" style={{ background: activeTheme.surface, border: `1px solid ${activeTheme.border}` }}>
+              <div className="text-[11px] f-mono uppercase tracking-wide mb-2" style={{ color: activeTheme.textDim }}>Fecha límite para registrar jugadores</div>
+              <div className="flex gap-2">
+                <input type="date" value={fechaLimiteRoster} onChange={(e) => setFechaLimiteRoster(e.target.value)}
+                  className="flex-1 rounded-md px-3 py-2 text-sm outline-none"
+                  style={{ background: activeTheme.surface2, color: activeTheme.text, border: `1px solid ${activeTheme.border}` }} />
+                {fechaLimiteRoster && (
+                  <button onClick={() => setFechaLimiteRoster("")} className="px-3 rounded-md text-xs font-semibold"
+                    style={{ background: activeTheme.surface2, color: activeTheme.danger, border: `1px solid ${activeTheme.border}` }}>Quitar</button>
                 )}
-                {equipos.map((eq) => {
-                  const abierta = !!rostersAbiertos[eq.id];
-                  const estado = rostersEquipos[eq.id];
-                  const jugadoresEq = estado?.jugadores || [];
-                  const ofensivaEq = jugadoresEq.filter((j) => j.lado === "ofensiva");
-                  const defensivaEq = jugadoresEq.filter((j) => j.lado === "defensiva");
-                  return (
-                    <div key={eq.id} className="mb-3">
-                      <button onClick={() => toggleRosterEquipo(eq.id)}
-                        className="w-full flex items-center justify-between gap-2 px-4 py-3.5 rounded-xl text-left select-none"
-                        style={{
-                          background: abierta ? activeTheme.surface2 : activeTheme.surface,
-                          border: `1px solid ${abierta ? activeTheme.offense + "55" : activeTheme.border}`,
-                        }}>
-                        <span className="f-mono text-sm font-bold uppercase tracking-wide" style={{ color: activeTheme.text }}>{eq.nombre}</span>
-                        <span className="flex items-center gap-2 shrink-0">
-                          {estado?.cargado && (
-                            <span className="text-[11px] f-mono uppercase" style={{ color: activeTheme.textDim }}>
-                              {jugadoresEq.length} jugador{jugadoresEq.length !== 1 ? "es" : ""}
-                            </span>
-                          )}
-                          <span style={{
-                            display: "inline-block",
-                            transform: abierta ? "rotate(90deg)" : "rotate(0deg)",
-                            transition: "transform 0.15s",
-                            color: abierta ? activeTheme.offense : activeTheme.textDim,
-                          }}>▸</span>
-                        </span>
-                      </button>
+              </div>
+              <div className="text-[11px] mt-2" style={{ color: activeTheme.textDim }}>
+                {fechaLimiteRoster
+                  ? (fechaLimiteRosterPasada
+                      ? `Venció el ${formatearFecha(fechaLimiteRoster)} — los equipos ya no pueden agregar jugadores.`
+                      : `Los equipos podrán agregar jugadores hasta el ${formatearFecha(fechaLimiteRoster)}.`)
+                  : "Sin fecha límite — los equipos pueden registrar jugadores en cualquier momento."}
+              </div>
+            </div>
 
-                      {abierta && (
-                        <div className="mt-3 rounded-xl p-4" style={{ background: activeTheme.surface, border: `1px solid ${activeTheme.border}` }}>
-                          {estado?.cargando && (
-                            <div className="text-xs" style={{ color: activeTheme.textDim }}>Cargando plantilla…</div>
-                          )}
-                          {estado?.cargado && jugadoresEq.length === 0 && (
-                            <div className="text-xs" style={{ color: activeTheme.textDim }}>Este equipo todavía no ha registrado jugadores.</div>
-                          )}
-                          {estado?.cargado && jugadoresEq.length > 0 && (
-                            <div className="flex flex-col gap-4">
-                              {[["Ofensiva", ofensivaEq], ["Defensiva", defensivaEq]].map(([titulo, lista]) => (
-                                lista.length > 0 && (
-                                  <div key={titulo}>
-                                    <div className="text-[11px] f-mono uppercase tracking-wide mb-2" style={{ color: activeTheme.textDim }}>{titulo}</div>
-                                    <div className="flex flex-col gap-2">
-                                      {lista.map((j) => (
-                                        <div key={j.id} className="flex items-center gap-3 rounded-lg px-3 py-2"
-                                          style={{ background: activeTheme.surface2, border: `1px solid ${activeTheme.border}` }}>
-                                          <div className="w-8 h-8 rounded-full shrink-0 overflow-hidden flex items-center justify-center"
-                                            style={{ background: activeTheme.surface, border: `2px solid ${POSITION_COLORS[j.posicion]}` }}>
-                                            {j.foto ? <img src={j.foto} alt="" className="w-full h-full object-cover" />
-                                              : <span className="text-[10px] f-mono font-bold" style={{ color: POSITION_COLORS[j.posicion] }}>{j.posicion}</span>}
-                                          </div>
-                                          <div className="flex-1 min-w-0">
-                                            <div className="text-sm font-semibold truncate" style={{ color: activeTheme.text }}>{j.nombre}</div>
-                                            <div className="text-xs" style={{ color: activeTheme.textDim }}>{NOMBRES_POSICION[j.posicion]}</div>
-                                          </div>
-                                          <div className="text-sm f-mono font-bold shrink-0" style={{ color: activeTheme.textDim }}>{j.numero}</div>
-                                        </div>
-                                      ))}
-                                    </div>
-                                  </div>
-                                )
-                              ))}
-                            </div>
-                          )}
+            <div className="f-display text-lg font-bold uppercase mb-4" style={{ color: activeTheme.text }}>Roster</div>
+            {equipos.length === 0 && (
+              <div className="text-sm py-3" style={{ color: activeTheme.textDim }}>Todavía no hay equipos en la liga.</div>
+            )}
+            {equipos.map((eq) => {
+              const abierta = !!rostersAbiertos[eq.id];
+              const estado = rostersEquipos[eq.id];
+              const jugadoresEq = estado?.jugadores || [];
+              const ofensivaEq = jugadoresEq.filter((j) => j.lado === "ofensiva");
+              const defensivaEq = jugadoresEq.filter((j) => j.lado === "defensiva");
+              return (
+                <div key={eq.id} className="mb-3">
+                  <button onClick={() => toggleRosterEquipo(eq.id)}
+                    className="w-full flex items-center justify-between gap-2 px-4 py-3.5 rounded-xl text-left select-none"
+                    style={{
+                      background: abierta ? activeTheme.surface2 : activeTheme.surface,
+                      border: `1px solid ${abierta ? activeTheme.offense + "55" : activeTheme.border}`,
+                    }}>
+                    <span className="f-mono text-sm font-bold uppercase tracking-wide" style={{ color: activeTheme.text }}>{eq.nombre}</span>
+                    <span className="flex items-center gap-2 shrink-0">
+                      {estado?.cargado && (
+                        <span className="text-[11px] f-mono uppercase" style={{ color: activeTheme.textDim }}>
+                          {jugadoresEq.length} jugador{jugadoresEq.length !== 1 ? "es" : ""}
+                        </span>
+                      )}
+                      <span style={{
+                        display: "inline-block",
+                        transform: abierta ? "rotate(90deg)" : "rotate(0deg)",
+                        transition: "transform 0.15s",
+                        color: abierta ? activeTheme.offense : activeTheme.textDim,
+                      }}>▸</span>
+                    </span>
+                  </button>
+
+                  {abierta && (
+                    <div className="mt-3 rounded-xl p-4" style={{ background: activeTheme.surface, border: `1px solid ${activeTheme.border}` }}>
+                      {estado?.cargando && (
+                        <div className="text-xs" style={{ color: activeTheme.textDim }}>Cargando roster…</div>
+                      )}
+                      {estado?.cargado && jugadoresEq.length === 0 && (
+                        <div className="text-xs" style={{ color: activeTheme.textDim }}>Este equipo todavía no ha registrado jugadores.</div>
+                      )}
+                      {estado?.cargado && jugadoresEq.length > 0 && (
+                        <div className="flex flex-col gap-4">
+                          {[["Ofensiva", ofensivaEq], ["Defensiva", defensivaEq]].map(([titulo, lista]) => (
+                            lista.length > 0 && (
+                              <div key={titulo}>
+                                <div className="text-[11px] f-mono uppercase tracking-wide mb-2" style={{ color: activeTheme.textDim }}>{titulo}</div>
+                                <div className="flex flex-col gap-2">
+                                  {lista.map((j) => (
+                                    <button key={j.id} onClick={() => abrirVistaJugador(j, true)}
+                                      className="flex items-center gap-3 rounded-lg px-3 py-2 text-left w-full"
+                                      style={{ background: activeTheme.surface2, border: `1px solid ${activeTheme.border}` }}>
+                                      <div className="w-8 h-8 rounded-full shrink-0 overflow-hidden flex items-center justify-center"
+                                        style={{ background: activeTheme.surface, border: `2px solid ${POSITION_COLORS[j.posicion]}` }}>
+                                        {j.foto ? <img src={j.foto} alt="" className="w-full h-full object-cover" />
+                                          : <span className="text-[10px] f-mono font-bold" style={{ color: POSITION_COLORS[j.posicion] }}>{j.posicion}</span>}
+                                      </div>
+                                      <div className="flex-1 min-w-0">
+                                        <div className="text-sm font-semibold truncate" style={{ color: activeTheme.text }}>{j.nombre}</div>
+                                        <div className="text-xs" style={{ color: activeTheme.textDim }}>{NOMBRES_POSICION[j.posicion]}</div>
+                                      </div>
+                                      <div className="text-sm f-mono font-bold shrink-0" style={{ color: activeTheme.textDim }}>{j.numero}</div>
+                                    </button>
+                                  ))}
+                                </div>
+                              </div>
+                            )
+                          ))}
                         </div>
                       )}
                     </div>
-                  );
-                })}
-              </div>
-            )}
+                  )}
+                </div>
+              );
+            })}
           </div>
         )}
 
@@ -2306,7 +2370,7 @@ export default function App() {
               onClick={(e) => e.stopPropagation()}>
               <div className="text-[11px] f-mono mb-2 uppercase tracking-wide" style={{ color: activeTheme.danger }}>Eliminar liga</div>
               <div className="text-sm mb-4" style={{ color: activeTheme.textDim }}>
-                Esto borra <strong style={{ color: activeTheme.text }}>{ligaNombre || "esta liga"}</strong> por completo: equipos, plantillas, playbooks y calendario. No se puede deshacer. Introduce el PIN de organizador para confirmar.
+                Esto borra <strong style={{ color: activeTheme.text }}>{ligaNombre || "esta liga"}</strong> por completo: equipos, rosters, playbooks y calendario. No se puede deshacer. Introduce el PIN de organizador para confirmar.
               </div>
               <input placeholder="PIN de organizador" value={pinEliminarLigaInput}
                 onChange={(e) => setPinEliminarLigaInput(e.target.value.replace(/[^0-9]/g, ""))}
