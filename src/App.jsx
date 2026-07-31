@@ -417,7 +417,9 @@ export default function App() {
   const [equipos, setEquipos] = useState([]); // [{id, nombre, lugar, foto, pin}] — compartido, de la liga activa
   const [jugadores, setJugadores] = useState([]);
   const [jugadas, setJugadas] = useState([]);
+  const [datosEquipoCargados, setDatosEquipoCargados] = useState(false); // evita guardar antes de terminar de leer el roster guardado
   const [partidosLiga, setPartidosLiga] = useState([]); // calendario único de la liga activa (compartido)
+  const [fechaLimiteRoster, setFechaLimiteRoster] = useState(""); // fecha límite para que los equipos registren jugadores
   const [tab, setTab] = useState("plantilla");
   const [errorFoto, setErrorFoto] = useState("");
 
@@ -488,6 +490,31 @@ export default function App() {
   const [modalEquipo, setModalEquipo] = useState(null); // { modo:'nuevo'|'editar', esPropio, id, nombreViejo, nombre, lugar, foto, pin }
   const [menuEquiposAbierto, setMenuEquiposAbierto] = useState(false);
 
+  // Eliminar liga por completo (requiere el PIN de organizador)
+  const [modalEliminarLiga, setModalEliminarLiga] = useState(false);
+  const [pinEliminarLigaInput, setPinEliminarLigaInput] = useState("");
+  const [errorEliminarLiga, setErrorEliminarLiga] = useState("");
+  const [eliminandoLiga, setEliminandoLiga] = useState(false);
+
+  // El organizador puede ver la plantilla (roster) de cualquier equipo de la liga, bajo demanda
+  const [rostersAbiertos, setRostersAbiertos] = useState({}); // { [equipoId]: bool }
+  const [rostersEquipos, setRostersEquipos] = useState({}); // { [equipoId]: { jugadores: [], cargando: bool, cargado: bool } }
+  const toggleRosterEquipo = async (equipoId) => {
+    const abrirAhora = !rostersAbiertos[equipoId];
+    setRostersAbiertos((prev) => ({ ...prev, [equipoId]: abrirAhora }));
+    if (!abrirAhora) return;
+    const yaCargado = rostersEquipos[equipoId]?.cargado;
+    if (yaCargado) return;
+    setRostersEquipos((prev) => ({ ...prev, [equipoId]: { jugadores: [], cargando: true, cargado: false } }));
+    try {
+      const res = await window.storage.get(`mi-equipo-datos-${ligaId}-${equipoId}`, true);
+      const mio = res?.value ? JSON.parse(res.value) : { jugadores: [] };
+      setRostersEquipos((prev) => ({ ...prev, [equipoId]: { jugadores: mio.jugadores ?? [], cargando: false, cargado: true } }));
+    } catch (e) {
+      setRostersEquipos((prev) => ({ ...prev, [equipoId]: { jugadores: [], cargando: false, cargado: true } }));
+    }
+  };
+
   // Modo claro / oscuro. Preferencia guardada solo en este dispositivo (no es data de la liga).
   const [modoClaro, setModoClaro] = useState(() => {
     try { return localStorage.getItem("modo-claro") === "1"; } catch (e) { return false; }
@@ -517,6 +544,7 @@ export default function App() {
                 setJugadores(mio.jugadores ?? []);
                 setJugadas((mio.jugadas ?? []).map((j) => ({ ...j, asignaciones: j.asignaciones || j.rutas || [] })));
               }
+              setDatosEquipoCargados(true);
             }
             setSesion(s);
             setTab(s.tipo === "equipo" ? "plantilla" : "calendario");
@@ -532,22 +560,22 @@ export default function App() {
     if (!cargado || !ligaId) return;
     (async () => {
       try {
-        await window.storage.set(`liga-datos-${ligaId}`, JSON.stringify({ nombre: ligaNombre, pinCreador, equipos, partidosLiga }), true);
+        await window.storage.set(`liga-datos-${ligaId}`, JSON.stringify({ nombre: ligaNombre, pinCreador, equipos, partidosLiga, fechaLimiteRoster }), true);
       } catch (e) { console.error("Error guardando liga", e); }
     })();
-  }, [ligaId, ligaNombre, pinCreador, equipos, partidosLiga, cargado]);
+  }, [ligaId, ligaNombre, pinCreador, equipos, partidosLiga, fechaLimiteRoster, cargado]);
 
   // Guardar mi plantilla/jugadas personales (solo si tengo sesión de equipo).
   // Se guarda como dato COMPARTIDO de la liga (bajo una llave única por equipo) para que
   // cualquiera que entre con el PIN de ese equipo, desde cualquier dispositivo, vea lo mismo.
   useEffect(() => {
-    if (!cargado || !sesion || sesion.tipo !== "equipo") return;
+    if (!cargado || !datosEquipoCargados || !sesion || sesion.tipo !== "equipo") return;
     (async () => {
       try {
         await window.storage.set(`mi-equipo-datos-${sesion.ligaId}-${sesion.equipoId}`, JSON.stringify({ jugadores, jugadas }), true);
       } catch (e) { console.error("Error guardando mi equipo", e); }
     })();
-  }, [jugadores, jugadas, cargado, sesion]);
+  }, [jugadores, jugadas, cargado, sesion, datosEquipoCargados]);
 
   // Carga el índice compartido de ligas dadas de alta (id + nombre, liviano)
   const cargarIndiceLigas = async () => {
@@ -573,6 +601,7 @@ export default function App() {
       setPinCreador(liga.pinCreador ?? "");
       setEquipos(liga.equipos ?? []);
       setPartidosLiga(liga.partidosLiga ?? []);
+      setFechaLimiteRoster(liga.fechaLimiteRoster ?? "");
       return liga;
     }
     return null;
@@ -629,11 +658,11 @@ export default function App() {
       const nuevaLista = [...lista, { id: nuevoId, nombre: nombreLigaInput.trim() }];
       await window.storage.set("ligas-indice", JSON.stringify(nuevaLista), true);
       setLigasIndice(nuevaLista);
-      await window.storage.set(`liga-datos-${nuevoId}`, JSON.stringify({ nombre: nombreLigaInput.trim(), pinCreador: pinCreadorInput.trim(), equipos: [], partidosLiga: [] }), true);
+      await window.storage.set(`liga-datos-${nuevoId}`, JSON.stringify({ nombre: nombreLigaInput.trim(), pinCreador: pinCreadorInput.trim(), equipos: [], partidosLiga: [], fechaLimiteRoster: "" }), true);
       setLigaId(nuevoId);
       setLigaNombre(nombreLigaInput.trim());
       setPinCreador(pinCreadorInput.trim());
-      setEquipos([]); setPartidosLiga([]);
+      setEquipos([]); setPartidosLiga([]); setFechaLimiteRoster("");
       const s = { tipo: "creador", ligaId: nuevoId };
       setSesion(s);
       setTab("calendario");
@@ -659,7 +688,8 @@ export default function App() {
     const encontrado = equipos.find((e) => e.pin === pinEquipoInput.trim());
     if (!encontrado) { setErrorLogin("Ese PIN no corresponde a ningún equipo de esta liga."); return; }
     const s = { tipo: "equipo", ligaId, equipoId: encontrado.id };
-    setSesion(s);
+    setDatosEquipoCargados(false);
+    setJugadores([]); setJugadas([]);
     setTab("plantilla");
     window.storage.set("sesion", JSON.stringify(s), false).catch(() => {});
     window.storage.get(`mi-equipo-datos-${ligaId}-${encontrado.id}`, true).then((res) => {
@@ -668,7 +698,10 @@ export default function App() {
         setJugadores(mio.jugadores ?? []);
         setJugadas((mio.jugadas ?? []).map((j) => ({ ...j, asignaciones: j.asignaciones || j.rutas || [] })));
       }
-    }).catch(() => {});
+    }).catch(() => {}).finally(() => {
+      setDatosEquipoCargados(true);
+      setSesion(s);
+    });
   };
 
   const volverLogin = () => {
@@ -680,11 +713,55 @@ export default function App() {
     setSesion(null);
     setMenuEquiposAbierto(false);
     setJugadores([]); setJugadas([]);
-    setLigaId(null); setLigaNombre(""); setPinCreador(""); setEquipos([]); setPartidosLiga([]);
+    setDatosEquipoCargados(false);
+    setLigaId(null); setLigaNombre(""); setPinCreador(""); setEquipos([]); setPartidosLiga([]); setFechaLimiteRoster("");
     setLigasIndice(null); setLigaElegida(null);
     setPantallaLogin("menu"); setContextoLogin(null);
     setNombreLigaInput(""); setPinCreadorInput(""); setPinEquipoInput(""); setErrorLogin("");
     window.storage.set("sesion", "", false).catch(() => {});
+  };
+
+  const abrirModalEliminarLiga = () => {
+    setMenuEquiposAbierto(false);
+    setPinEliminarLigaInput("");
+    setErrorEliminarLiga("");
+    setModalEliminarLiga(true);
+  };
+  const cerrarModalEliminarLiga = () => {
+    setModalEliminarLiga(false);
+    setPinEliminarLigaInput("");
+    setErrorEliminarLiga("");
+  };
+
+  const confirmarEliminarLiga = async () => {
+    setErrorEliminarLiga("");
+    if (pinEliminarLigaInput.trim() !== pinCreador) {
+      setErrorEliminarLiga("PIN de organizador incorrecto.");
+      return;
+    }
+    setEliminandoLiga(true);
+    try {
+      // Borra los datos personales de cada equipo (plantilla y playbook)
+      await Promise.all(
+        equipos.map((eq) =>
+          window.storage.delete(`mi-equipo-datos-${ligaId}-${eq.id}`, true).catch(() => {})
+        )
+      );
+      // Borra los datos compartidos de la liga (equipos, calendario, PIN de organizador)
+      await window.storage.delete(`liga-datos-${ligaId}`, true).catch(() => {});
+      // Quita la liga del índice compartido para que ya no aparezca en el selector
+      const lista = ligasIndice || (await cargarIndiceLigas());
+      const nuevaLista = (lista || []).filter((l) => l.id !== ligaId);
+      await window.storage.set("ligas-indice", JSON.stringify(nuevaLista), true).catch(() => {});
+      setLigasIndice(nuevaLista);
+      setModalEliminarLiga(false);
+      cerrarSesion();
+    } catch (err) {
+      console.error("Error eliminando la liga", err);
+      setErrorEliminarLiga("No se pudo eliminar la liga. Intenta de nuevo.");
+    } finally {
+      setEliminandoLiga(false);
+    }
   };
 
   /* ---------- plantilla ---------- */
@@ -758,6 +835,7 @@ export default function App() {
 
   const ofensiva = jugadores.filter((j) => j.lado === "ofensiva");
   const defensiva = jugadores.filter((j) => j.lado === "defensiva");
+  const fechaLimiteRosterPasada = !!fechaLimiteRoster && new Date(`${fechaLimiteRoster}T23:59:59`) < new Date();
 
   /* ---------- playbook ---------- */
   const iniciarNuevaJugada = (lado) => { setEligiendoFormacion(lado); };
@@ -1102,7 +1180,7 @@ export default function App() {
           aria-label="Cambiar modo claro/oscuro">
           {modoClaro ? <MoonIcon /> : <SunIcon />}
         </button>
-        <div className="max-w-md w-full mx-auto px-4 py-10">
+        <div className="max-w-md w-full mx-auto px-4 py-10 pt-16">
           <div className="f-display text-3xl font-bold text-center mb-1" style={{ color: activeTheme.text }}>
             {ligaElegida ? ligaElegida.nombre : "Roster & Playbook"}
           </div>
@@ -1289,6 +1367,10 @@ export default function App() {
                   </div>
                   <button onClick={cerrarSesion} className="w-full py-2 rounded-md text-xs font-semibold"
                     style={{ background: activeTheme.surface2, color: activeTheme.danger, border: `1px solid ${activeTheme.border}` }}>Cerrar sesión</button>
+                  {sesion.tipo === "creador" && (
+                    <button onClick={abrirModalEliminarLiga} className="w-full py-2 rounded-md text-xs font-semibold mt-2"
+                      style={{ background: "transparent", color: activeTheme.danger, border: `1px dashed ${activeTheme.danger}66` }}>Eliminar liga</button>
+                  )}
                 </div>
               </>
             )}
@@ -1326,10 +1408,23 @@ export default function App() {
           <div>
             <div className="flex items-center justify-between mb-4">
               <div className="f-display text-lg font-bold uppercase" style={{ color: activeTheme.text }}>Plantilla</div>
-              <button onClick={() => setModalJugadorAbierto(true)}
+              <button onClick={() => setModalJugadorAbierto(true)} disabled={fechaLimiteRosterPasada}
                 className="w-9 h-9 rounded-full flex items-center justify-center text-lg font-bold shrink-0"
-                style={{ background: activeTheme.text, color: activeTheme.bg }}>+</button>
+                style={{ background: activeTheme.text, color: activeTheme.bg, opacity: fechaLimiteRosterPasada ? 0.4 : 1 }}>+</button>
             </div>
+
+            {fechaLimiteRoster && (
+              <div className="rounded-lg px-3 py-2.5 mb-4 text-xs"
+                style={{
+                  background: fechaLimiteRosterPasada ? activeTheme.danger + "22" : activeTheme.surface2,
+                  border: `1px solid ${fechaLimiteRosterPasada ? activeTheme.danger + "66" : activeTheme.border}`,
+                  color: fechaLimiteRosterPasada ? activeTheme.danger : activeTheme.textDim,
+                }}>
+                {fechaLimiteRosterPasada
+                  ? `La fecha límite para registrar jugadores fue el ${formatearFecha(fechaLimiteRoster)}. Ya no se pueden agregar más.`
+                  : `Fecha límite para registrar jugadores: ${formatearFecha(fechaLimiteRoster)}.`}
+              </div>
+            )}
 
             {[["Ofensiva", ofensiva], ["Defensiva", defensiva]].map(([titulo, lista]) => (
               <div key={titulo} className="mb-6">
@@ -1779,6 +1874,28 @@ export default function App() {
         {/* ============ TAB LIGA (tabla + equipos) ============ */}
         {tab === "liga" && (
           <div>
+            {sesion.tipo === "creador" && (
+              <div className="rounded-xl p-4 mb-6" style={{ background: activeTheme.surface, border: `1px solid ${activeTheme.border}` }}>
+                <div className="text-[11px] f-mono uppercase tracking-wide mb-2" style={{ color: activeTheme.textDim }}>Fecha límite para registrar jugadores</div>
+                <div className="flex gap-2">
+                  <input type="date" value={fechaLimiteRoster} onChange={(e) => setFechaLimiteRoster(e.target.value)}
+                    className="flex-1 rounded-md px-3 py-2 text-sm outline-none"
+                    style={{ background: activeTheme.surface2, color: activeTheme.text, border: `1px solid ${activeTheme.border}` }} />
+                  {fechaLimiteRoster && (
+                    <button onClick={() => setFechaLimiteRoster("")} className="px-3 rounded-md text-xs font-semibold"
+                      style={{ background: activeTheme.surface2, color: activeTheme.danger, border: `1px solid ${activeTheme.border}` }}>Quitar</button>
+                  )}
+                </div>
+                <div className="text-[11px] mt-2" style={{ color: activeTheme.textDim }}>
+                  {fechaLimiteRoster
+                    ? (fechaLimiteRosterPasada
+                        ? `Venció el ${formatearFecha(fechaLimiteRoster)} — los equipos ya no pueden agregar jugadores.`
+                        : `Los equipos podrán agregar jugadores hasta el ${formatearFecha(fechaLimiteRoster)}.`)
+                    : "Sin fecha límite — los equipos pueden registrar jugadores en cualquier momento."}
+                </div>
+              </div>
+            )}
+
             <div className="f-display text-lg font-bold uppercase mb-4" style={{ color: activeTheme.text }}>Tabla de posiciones</div>
 
             <div className="rounded-xl overflow-hidden mb-6" style={{ background: activeTheme.surface, border: `1px solid ${activeTheme.border}` }}>
@@ -1812,6 +1929,86 @@ export default function App() {
             <div className="text-[11px]" style={{ color: activeTheme.textDim }}>
               La tabla se calcula automáticamente a partir de los marcadores guardados en el Calendario. Los juegos BYE no se contabilizan.
             </div>
+
+            {sesion.tipo === "creador" && (
+              <div className="mt-8">
+                <div className="f-display text-lg font-bold uppercase mb-4" style={{ color: activeTheme.text }}>Plantillas por equipo</div>
+                {equipos.length === 0 && (
+                  <div className="text-sm py-3" style={{ color: activeTheme.textDim }}>Todavía no hay equipos en la liga.</div>
+                )}
+                {equipos.map((eq) => {
+                  const abierta = !!rostersAbiertos[eq.id];
+                  const estado = rostersEquipos[eq.id];
+                  const jugadoresEq = estado?.jugadores || [];
+                  const ofensivaEq = jugadoresEq.filter((j) => j.lado === "ofensiva");
+                  const defensivaEq = jugadoresEq.filter((j) => j.lado === "defensiva");
+                  return (
+                    <div key={eq.id} className="mb-3">
+                      <button onClick={() => toggleRosterEquipo(eq.id)}
+                        className="w-full flex items-center justify-between gap-2 px-4 py-3.5 rounded-xl text-left select-none"
+                        style={{
+                          background: abierta ? activeTheme.surface2 : activeTheme.surface,
+                          border: `1px solid ${abierta ? activeTheme.offense + "55" : activeTheme.border}`,
+                        }}>
+                        <span className="f-mono text-sm font-bold uppercase tracking-wide" style={{ color: activeTheme.text }}>{eq.nombre}</span>
+                        <span className="flex items-center gap-2 shrink-0">
+                          {estado?.cargado && (
+                            <span className="text-[11px] f-mono uppercase" style={{ color: activeTheme.textDim }}>
+                              {jugadoresEq.length} jugador{jugadoresEq.length !== 1 ? "es" : ""}
+                            </span>
+                          )}
+                          <span style={{
+                            display: "inline-block",
+                            transform: abierta ? "rotate(90deg)" : "rotate(0deg)",
+                            transition: "transform 0.15s",
+                            color: abierta ? activeTheme.offense : activeTheme.textDim,
+                          }}>▸</span>
+                        </span>
+                      </button>
+
+                      {abierta && (
+                        <div className="mt-3 rounded-xl p-4" style={{ background: activeTheme.surface, border: `1px solid ${activeTheme.border}` }}>
+                          {estado?.cargando && (
+                            <div className="text-xs" style={{ color: activeTheme.textDim }}>Cargando plantilla…</div>
+                          )}
+                          {estado?.cargado && jugadoresEq.length === 0 && (
+                            <div className="text-xs" style={{ color: activeTheme.textDim }}>Este equipo todavía no ha registrado jugadores.</div>
+                          )}
+                          {estado?.cargado && jugadoresEq.length > 0 && (
+                            <div className="flex flex-col gap-4">
+                              {[["Ofensiva", ofensivaEq], ["Defensiva", defensivaEq]].map(([titulo, lista]) => (
+                                lista.length > 0 && (
+                                  <div key={titulo}>
+                                    <div className="text-[11px] f-mono uppercase tracking-wide mb-2" style={{ color: activeTheme.textDim }}>{titulo}</div>
+                                    <div className="flex flex-col gap-2">
+                                      {lista.map((j) => (
+                                        <div key={j.id} className="flex items-center gap-3 rounded-lg px-3 py-2"
+                                          style={{ background: activeTheme.surface2, border: `1px solid ${activeTheme.border}` }}>
+                                          <div className="w-8 h-8 rounded-full shrink-0 overflow-hidden flex items-center justify-center"
+                                            style={{ background: activeTheme.surface, border: `2px solid ${POSITION_COLORS[j.posicion]}` }}>
+                                            {j.foto ? <img src={j.foto} alt="" className="w-full h-full object-cover" />
+                                              : <span className="text-[10px] f-mono font-bold" style={{ color: POSITION_COLORS[j.posicion] }}>{j.posicion}</span>}
+                                          </div>
+                                          <div className="flex-1 min-w-0">
+                                            <div className="text-sm font-semibold truncate" style={{ color: activeTheme.text }}>{j.nombre}</div>
+                                            <div className="text-xs" style={{ color: activeTheme.textDim }}>{NOMBRES_POSICION[j.posicion]}</div>
+                                          </div>
+                                          <div className="text-sm f-mono font-bold shrink-0" style={{ color: activeTheme.textDim }}>{j.numero}</div>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         )}
 
@@ -2095,6 +2292,35 @@ export default function App() {
                   style={{ background: activeTheme.surface2, color: activeTheme.text, border: `1px solid ${activeTheme.border}` }}>Cancelar</button>
                 <button onClick={guardarModalEquipo} className="flex-1 py-3 rounded-lg font-semibold text-sm"
                   style={{ background: activeTheme.text, color: activeTheme.bg }}>Guardar</button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ============ MODAL: ELIMINAR LIGA (requiere PIN de organizador) ============ */}
+        {modalEliminarLiga && (
+          <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4"
+            style={{ background: "rgba(6,8,7,0.75)" }} onClick={cerrarModalEliminarLiga}>
+            <div className="w-full sm:max-w-sm rounded-t-2xl sm:rounded-2xl p-5"
+              style={{ background: activeTheme.surface, border: `1px solid ${activeTheme.border}` }}
+              onClick={(e) => e.stopPropagation()}>
+              <div className="text-[11px] f-mono mb-2 uppercase tracking-wide" style={{ color: activeTheme.danger }}>Eliminar liga</div>
+              <div className="text-sm mb-4" style={{ color: activeTheme.textDim }}>
+                Esto borra <strong style={{ color: activeTheme.text }}>{ligaNombre || "esta liga"}</strong> por completo: equipos, plantillas, playbooks y calendario. No se puede deshacer. Introduce el PIN de organizador para confirmar.
+              </div>
+              <input placeholder="PIN de organizador" value={pinEliminarLigaInput}
+                onChange={(e) => setPinEliminarLigaInput(e.target.value.replace(/[^0-9]/g, ""))}
+                className="w-full rounded-md px-3 py-3 text-sm outline-none f-mono text-center tracking-widest mb-3"
+                style={{ background: activeTheme.surface2, color: activeTheme.text, border: `1px solid ${activeTheme.border}` }} />
+              {errorEliminarLiga && <div className="text-xs mb-3" style={{ color: activeTheme.danger }}>{errorEliminarLiga}</div>}
+              <div className="flex gap-2">
+                <button onClick={cerrarModalEliminarLiga} className="flex-1 py-3 rounded-lg font-semibold text-sm"
+                  style={{ background: activeTheme.surface2, color: activeTheme.text, border: `1px solid ${activeTheme.border}` }}>Cancelar</button>
+                <button onClick={confirmarEliminarLiga} disabled={eliminandoLiga || !pinEliminarLigaInput.trim()}
+                  className="flex-1 py-3 rounded-lg font-semibold text-sm"
+                  style={{ background: activeTheme.danger, color: "#FFFFFF", opacity: eliminandoLiga || !pinEliminarLigaInput.trim() ? 0.6 : 1 }}>
+                  {eliminandoLiga ? "Eliminando…" : "Eliminar liga"}
+                </button>
               </div>
             </div>
           </div>
