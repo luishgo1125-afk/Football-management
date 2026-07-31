@@ -40,7 +40,46 @@ const THEME = {
   bloqueo: "#C9A227",
 };
 
+const LIGHT_THEME = {
+  bg: "#F5F3EE",
+  surface: "#FFFFFF",
+  surface2: "#ECE8DF",
+  border: "rgba(10,13,12,0.12)",
+  text: "#14171A",
+  textDim: "#5B6560",
+  offense: "#B9822A",
+  defense: "#2E5F8A",
+  danger: "#A83E33",
+  win: "#2F7A4B",
+  tie: "#5B6560",
+  bloqueo: "#9C7A18",
+};
+
 const uid = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
+
+/* Íconos de línea fina para el toggle de modo claro/oscuro (heredan color del texto) */
+function SunIcon({ size = 16 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="4.2" />
+      <line x1="12" y1="2.5" x2="12" y2="5" />
+      <line x1="12" y1="19" x2="12" y2="21.5" />
+      <line x1="4.2" y1="4.2" x2="6" y2="6" />
+      <line x1="18" y1="18" x2="19.8" y2="19.8" />
+      <line x1="2.5" y1="12" x2="5" y2="12" />
+      <line x1="19" y1="12" x2="21.5" y2="12" />
+      <line x1="4.2" y1="19.8" x2="6" y2="18" />
+      <line x1="18" y1="6" x2="19.8" y2="4.2" />
+    </svg>
+  );
+}
+function MoonIcon({ size = 16 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M20.5 14.7A8.4 8.4 0 0 1 9.3 3.5a8.6 8.6 0 1 0 11.2 11.2Z" />
+    </svg>
+  );
+}
 const posASide = (pos) => (POSICIONES.ofensiva.includes(pos) ? "ofensiva" : "defensiva");
 
 const FIELD_W = 300;
@@ -448,6 +487,19 @@ export default function App() {
   // Liga: alta / edición de equipos (nombre + de dónde son)
   const [modalEquipo, setModalEquipo] = useState(null); // { modo:'nuevo'|'editar', esPropio, id, nombreViejo, nombre, lugar, foto, pin }
   const [menuEquiposAbierto, setMenuEquiposAbierto] = useState(false);
+
+  // Modo claro / oscuro. Preferencia guardada solo en este dispositivo (no es data de la liga).
+  const [modoClaro, setModoClaro] = useState(() => {
+    try { return localStorage.getItem("modo-claro") === "1"; } catch (e) { return false; }
+  });
+  const toggleModo = () => {
+    setModoClaro((v) => {
+      const nuevo = !v;
+      try { localStorage.setItem("modo-claro", nuevo ? "1" : "0"); } catch (e) { /* no-op */ }
+      return nuevo;
+    });
+  };
+  const activeTheme = modoClaro ? LIGHT_THEME : THEME;
 
   // Carga inicial: solo la sesión personal. Si había sesión activa, recupera esa liga.
   useEffect(() => {
@@ -900,7 +952,7 @@ export default function App() {
     if (propio < rivalScore) return "P";
     return "E";
   };
-  const colorResultado = (r) => (r === "G" ? THEME.win : r === "P" ? THEME.danger : THEME.tie);
+  const colorResultado = (r) => (r === "G" ? activeTheme.win : r === "P" ? activeTheme.danger : activeTheme.tie);
   const textoResultado = (r) => (r === "G" ? "Ganado" : r === "P" ? "Perdido" : "Empate");
 
   const fotoDeEquipo = (nombreEquipo) => {
@@ -1029,26 +1081,32 @@ export default function App() {
     `}</style>
   );
 
-  const inputStyle = { background: THEME.surface2, color: THEME.text, border: `1px solid ${THEME.border}` };
+  const inputStyle = { background: activeTheme.surface2, color: activeTheme.text, border: `1px solid ${activeTheme.border}` };
 
   if (!cargado) {
     return (
-      <div className="min-h-screen w-full flex items-center justify-center" style={{ background: THEME.bg }}>
+      <div className="min-h-screen w-full flex items-center justify-center" style={{ background: activeTheme.bg }}>
         {fuentes}
-        <div className="text-sm f-mono" style={{ color: THEME.textDim }}>Cargando…</div>
+        <div className="text-sm f-mono" style={{ color: activeTheme.textDim }}>Cargando…</div>
       </div>
     );
   }
 
   if (!sesion) {
     return (
-      <div className="min-h-screen w-full flex items-center justify-center" style={{ background: THEME.bg }}>
+      <div className="min-h-screen w-full flex items-center justify-center" style={{ background: activeTheme.bg }}>
         {fuentes}
+        <button onClick={toggleModo}
+          className="fixed top-4 right-4 z-[60] w-10 h-10 rounded-full flex items-center justify-center"
+          style={{ background: activeTheme.surface, border: `1px solid ${activeTheme.border}`, color: activeTheme.textDim }}
+          aria-label="Cambiar modo claro/oscuro">
+          {modoClaro ? <MoonIcon /> : <SunIcon />}
+        </button>
         <div className="max-w-md w-full mx-auto px-4 py-10">
-          <div className="f-display text-3xl font-bold text-center mb-1" style={{ color: THEME.text }}>
+          <div className="f-display text-3xl font-bold text-center mb-1" style={{ color: activeTheme.text }}>
             {ligaElegida ? ligaElegida.nombre : "Roster & Playbook"}
           </div>
-          <div className="text-sm text-center mb-8" style={{ color: THEME.textDim }}>
+          <div className="text-sm text-center mb-8" style={{ color: activeTheme.textDim }}>
             {pantallaLogin === "menu" ? "Elige cómo quieres entrar" : "Selecciona tu liga"}
           </div>
 
@@ -1056,17 +1114,17 @@ export default function App() {
             <div className="flex flex-col gap-3">
               <button onClick={() => abrirElegirLiga("organizador")}
                 className="w-full py-3.5 rounded-lg font-semibold text-sm"
-                style={{ background: THEME.text, color: THEME.bg }}>
+                style={{ background: activeTheme.text, color: activeTheme.bg }}>
                 Soy el organizador
               </button>
               <button onClick={() => abrirElegirLiga("equipo")}
                 className="w-full py-3.5 rounded-lg font-semibold text-sm"
-                style={{ background: THEME.surface, color: THEME.text, border: `1px solid ${THEME.border}` }}>
+                style={{ background: activeTheme.surface, color: activeTheme.text, border: `1px solid ${activeTheme.border}` }}>
                 Tengo un PIN de equipo
               </button>
               <button onClick={() => abrirElegirLiga("visitante")}
                 className="w-full py-3.5 rounded-lg font-semibold text-sm"
-                style={{ background: "transparent", color: THEME.textDim, border: `1px solid ${THEME.border}` }}>
+                style={{ background: "transparent", color: activeTheme.textDim, border: `1px solid ${activeTheme.border}` }}>
                 Entrar como visitante
               </button>
             </div>
@@ -1075,28 +1133,28 @@ export default function App() {
           {pantallaLogin === "elegirLiga" && (
             <div className="flex flex-col gap-2">
               {ligasIndice === null && (
-                <div className="text-xs text-center py-6" style={{ color: THEME.textDim }}>Cargando ligas…</div>
+                <div className="text-xs text-center py-6" style={{ color: activeTheme.textDim }}>Cargando ligas…</div>
               )}
               {ligasIndice !== null && ligasIndice.length === 0 && (
-                <div className="text-xs text-center py-6" style={{ color: THEME.textDim }}>
+                <div className="text-xs text-center py-6" style={{ color: activeTheme.textDim }}>
                   {contextoLogin === "organizador" ? "Todavía no hay ligas — crea la primera." : "Todavía no hay ninguna liga dada de alta."}
                 </div>
               )}
               {(ligasIndice || []).map((l) => (
                 <button key={l.id} onClick={() => elegirLigaExistente(l)}
                   className="w-full text-left py-3 px-4 rounded-lg text-sm font-semibold"
-                  style={{ background: THEME.surface, color: THEME.text, border: `1px solid ${THEME.border}` }}>
+                  style={{ background: activeTheme.surface, color: activeTheme.text, border: `1px solid ${activeTheme.border}` }}>
                   {l.nombre}
                 </button>
               ))}
               {contextoLogin === "organizador" && (
                 <button onClick={irACrearLiga}
                   className="w-full py-3 rounded-lg text-sm font-semibold mt-1"
-                  style={{ background: THEME.surface2, color: THEME.offense, border: `1px dashed ${THEME.border}` }}>
+                  style={{ background: activeTheme.surface2, color: activeTheme.offense, border: `1px dashed ${activeTheme.border}` }}>
                   ＋ Crear una liga nueva
                 </button>
               )}
-              <button onClick={volverLogin} className="w-full py-2 text-xs font-medium mt-2" style={{ color: THEME.textDim }}>Volver</button>
+              <button onClick={volverLogin} className="w-full py-2 text-xs font-medium mt-2" style={{ color: activeTheme.textDim }}>Volver</button>
             </div>
           )}
 
@@ -1107,10 +1165,10 @@ export default function App() {
               <input placeholder="Elige un PIN de organizador" value={pinCreadorInput}
                 onChange={(e) => setPinCreadorInput(e.target.value.replace(/[^0-9]/g, ""))}
                 className="w-full rounded-md px-3 py-3 text-sm outline-none f-mono text-center tracking-widest" style={inputStyle} />
-              {errorLogin && <div className="text-xs text-center" style={{ color: THEME.danger }}>{errorLogin}</div>}
+              {errorLogin && <div className="text-xs text-center" style={{ color: activeTheme.danger }}>{errorLogin}</div>}
               <button onClick={crearLiga} className="w-full py-3.5 rounded-lg font-semibold text-sm"
-                style={{ background: THEME.text, color: THEME.bg }}>Crear liga</button>
-              <button onClick={volverLogin} className="w-full py-2 text-xs font-medium" style={{ color: THEME.textDim }}>Volver</button>
+                style={{ background: activeTheme.text, color: activeTheme.bg }}>Crear liga</button>
+              <button onClick={volverLogin} className="w-full py-2 text-xs font-medium" style={{ color: activeTheme.textDim }}>Volver</button>
             </div>
           )}
 
@@ -1119,10 +1177,10 @@ export default function App() {
               <input placeholder="PIN de organizador" value={pinCreadorInput}
                 onChange={(e) => setPinCreadorInput(e.target.value.replace(/[^0-9]/g, ""))}
                 className="w-full rounded-md px-3 py-3 text-sm outline-none f-mono text-center tracking-widest" style={inputStyle} />
-              {errorLogin && <div className="text-xs text-center" style={{ color: THEME.danger }}>{errorLogin}</div>}
+              {errorLogin && <div className="text-xs text-center" style={{ color: activeTheme.danger }}>{errorLogin}</div>}
               <button onClick={confirmarPinOrganizador} className="w-full py-3.5 rounded-lg font-semibold text-sm"
-                style={{ background: THEME.text, color: THEME.bg }}>Entrar</button>
-              <button onClick={volverLogin} className="w-full py-2 text-xs font-medium" style={{ color: THEME.textDim }}>Volver</button>
+                style={{ background: activeTheme.text, color: activeTheme.bg }}>Entrar</button>
+              <button onClick={volverLogin} className="w-full py-2 text-xs font-medium" style={{ color: activeTheme.textDim }}>Volver</button>
             </div>
           )}
 
@@ -1131,10 +1189,10 @@ export default function App() {
               <input placeholder="PIN de tu equipo" value={pinEquipoInput}
                 onChange={(e) => setPinEquipoInput(e.target.value.replace(/[^0-9]/g, ""))}
                 className="w-full rounded-md px-3 py-3 text-sm outline-none f-mono text-center tracking-widest" style={inputStyle} />
-              {errorLogin && <div className="text-xs text-center" style={{ color: THEME.danger }}>{errorLogin}</div>}
+              {errorLogin && <div className="text-xs text-center" style={{ color: activeTheme.danger }}>{errorLogin}</div>}
               <button onClick={confirmarPinEquipo} className="w-full py-3.5 rounded-lg font-semibold text-sm"
-                style={{ background: THEME.text, color: THEME.bg }}>Entrar</button>
-              <button onClick={volverLogin} className="w-full py-2 text-xs font-medium" style={{ color: THEME.textDim }}>Volver</button>
+                style={{ background: activeTheme.text, color: activeTheme.bg }}>Entrar</button>
+              <button onClick={volverLogin} className="w-full py-2 text-xs font-medium" style={{ color: activeTheme.textDim }}>Volver</button>
             </div>
           )}
         </div>
@@ -1143,7 +1201,7 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen w-full" style={{ background: THEME.bg }}>
+    <div className="min-h-screen w-full" style={{ background: activeTheme.bg }}>
       {fuentes}
       <div className="max-w-md mx-auto px-4 pb-24 pt-6">
 
@@ -1154,83 +1212,90 @@ export default function App() {
               <input type="file" accept="image/*" ref={inputFotoEquipo} className="hidden" onChange={onFotoEquipoChange} />
               <button onClick={() => inputFotoEquipo.current?.click()}
                 className="w-12 h-12 rounded-full flex items-center justify-center shrink-0 overflow-hidden"
-                style={{ background: THEME.surface2, border: `1px dashed ${THEME.border}` }}>
+                style={{ background: activeTheme.surface2, border: `1px dashed ${activeTheme.border}` }}>
                 {equipoFoto ? <img src={equipoFoto} alt="" className="w-full h-full object-cover" />
-                  : <span className="text-lg" style={{ color: THEME.textDim }}>+</span>}
+                  : <span className="text-lg" style={{ color: activeTheme.textDim }}>+</span>}
               </button>
             </>
           )}
           {sesion.tipo === "equipo" ? (
             <input value={equipo} onChange={(e) => actualizarMiEquipo({ nombre: e.target.value })}
               className="f-display text-2xl bg-transparent outline-none w-full font-bold"
-              style={{ color: THEME.text }} />
+              style={{ color: activeTheme.text }} />
           ) : sesion.tipo === "creador" ? (
             <input value={ligaNombre} onChange={(e) => setLigaNombre(e.target.value)}
               className="f-display text-2xl bg-transparent outline-none w-full font-bold"
-              style={{ color: THEME.text }} />
+              style={{ color: activeTheme.text }} />
           ) : (
-            <div className="f-display text-2xl font-bold w-full truncate" style={{ color: THEME.text }}>{ligaNombre || "Visitante"}</div>
+            <div className="f-display text-2xl font-bold w-full truncate" style={{ color: activeTheme.text }}>{ligaNombre || "Visitante"}</div>
           )}
+
+          <button onClick={toggleModo}
+            className="w-10 h-10 rounded-full flex items-center justify-center shrink-0"
+            style={{ background: activeTheme.surface, border: `1px solid ${activeTheme.border}`, color: activeTheme.textDim }}
+            aria-label="Cambiar modo claro/oscuro">
+            {modoClaro ? <MoonIcon /> : <SunIcon />}
+          </button>
 
           <div className="relative shrink-0">
             <button onClick={() => setMenuEquiposAbierto((v) => !v)}
               className="w-10 h-10 rounded-full flex flex-col items-center justify-center gap-[3px] shrink-0"
-              style={{ background: THEME.surface, border: `1px solid ${THEME.border}` }}>
-              <span className="block w-4 h-[2px] rounded-full" style={{ background: THEME.text }} />
-              <span className="block w-4 h-[2px] rounded-full" style={{ background: THEME.text }} />
-              <span className="block w-4 h-[2px] rounded-full" style={{ background: THEME.text }} />
+              style={{ background: activeTheme.surface, border: `1px solid ${activeTheme.border}` }}>
+              <span className="block w-4 h-[2px] rounded-full" style={{ background: activeTheme.text }} />
+              <span className="block w-4 h-[2px] rounded-full" style={{ background: activeTheme.text }} />
+              <span className="block w-4 h-[2px] rounded-full" style={{ background: activeTheme.text }} />
             </button>
 
             {menuEquiposAbierto && (
               <>
                 <div className="fixed inset-0 z-40" onClick={() => setMenuEquiposAbierto(false)} />
                 <div className="absolute right-0 top-12 z-50 w-72 max-w-[85vw] rounded-xl p-4"
-                  style={{ background: THEME.surface, border: `1px solid ${THEME.border}`, boxShadow: "0 12px 30px rgba(0,0,0,0.45)" }}>
+                  style={{ background: activeTheme.surface, border: `1px solid ${activeTheme.border}`, boxShadow: "0 12px 30px rgba(0,0,0,0.45)" }}>
                   <div className="flex items-center justify-between mb-3">
-                    <div className="f-display text-base font-bold uppercase" style={{ color: THEME.text }}>Equipos</div>
+                    <div className="f-display text-base font-bold uppercase" style={{ color: activeTheme.text }}>Equipos</div>
                     {sesion.tipo === "creador" && (
                       <button onClick={abrirNuevoEquipo}
                         className="w-8 h-8 rounded-full flex items-center justify-center text-base font-bold shrink-0"
-                        style={{ background: THEME.text, color: THEME.bg }}>+</button>
+                        style={{ background: activeTheme.text, color: activeTheme.bg }}>+</button>
                     )}
                   </div>
                   <div className="flex flex-col gap-2 max-h-80 overflow-y-auto mb-3">
                     {listaEquipos.length === 0 && (
-                      <div className="text-xs" style={{ color: THEME.textDim }}>
+                      <div className="text-xs" style={{ color: activeTheme.textDim }}>
                         {sesion.tipo === "creador" ? "Agrega tu primer equipo con el +." : "Todavía no hay equipos en la liga."}
                       </div>
                     )}
                     {listaEquipos.map((eq) => (
                       <div key={eq.id} className="flex items-center gap-3 rounded-lg px-3 py-2.5"
-                        style={{ background: THEME.surface2, border: `1px solid ${THEME.border}` }}>
+                        style={{ background: activeTheme.surface2, border: `1px solid ${activeTheme.border}` }}>
                         <div className="w-8 h-8 rounded-full overflow-hidden shrink-0 flex items-center justify-center"
-                          style={{ background: THEME.surface, border: `1px solid ${THEME.border}` }}>
+                          style={{ background: activeTheme.surface, border: `1px solid ${activeTheme.border}` }}>
                           {eq.foto ? <img src={eq.foto} alt="" className="w-full h-full object-cover" /> : null}
                         </div>
                         <div className="flex-1 min-w-0">
-                          <div className="text-sm font-semibold truncate" style={{ color: eq.esPropio ? THEME.offense : THEME.text }}>{eq.nombre}</div>
-                          <div className="text-xs truncate" style={{ color: THEME.textDim }}>
+                          <div className="text-sm font-semibold truncate" style={{ color: eq.esPropio ? activeTheme.offense : activeTheme.text }}>{eq.nombre}</div>
+                          <div className="text-xs truncate" style={{ color: activeTheme.textDim }}>
                             {eq.lugar || "Sin ubicación"}{sesion.tipo === "creador" ? ` · PIN ${eq.pin}` : ""}
                           </div>
                         </div>
                         {puedeEditarEquipo(eq) && (
-                          <button onClick={() => abrirEditarEquipo(eq)} className="text-xs px-2 shrink-0" style={{ color: THEME.textDim }}>✎</button>
+                          <button onClick={() => abrirEditarEquipo(eq)} className="text-xs px-2 shrink-0" style={{ color: activeTheme.textDim }}>✎</button>
                         )}
                         {sesion.tipo === "creador" && (
-                          <button onClick={() => eliminarEquipoRegistro(eq.id)} className="text-xs px-2 shrink-0" style={{ color: THEME.danger }}>✕</button>
+                          <button onClick={() => eliminarEquipoRegistro(eq.id)} className="text-xs px-2 shrink-0" style={{ color: activeTheme.danger }}>✕</button>
                         )}
                       </div>
                     ))}
                   </div>
                   <button onClick={cerrarSesion} className="w-full py-2 rounded-md text-xs font-semibold"
-                    style={{ background: THEME.surface2, color: THEME.danger, border: `1px solid ${THEME.border}` }}>Cerrar sesión</button>
+                    style={{ background: activeTheme.surface2, color: activeTheme.danger, border: `1px solid ${activeTheme.border}` }}>Cerrar sesión</button>
                 </div>
               </>
             )}
           </div>
         </div>
         {sesion.tipo === "equipo" && (
-          <div className="flex gap-3 f-mono text-[11px] mb-5 uppercase tracking-wide flex-wrap" style={{ color: THEME.textDim }}>
+          <div className="flex gap-3 f-mono text-[11px] mb-5 uppercase tracking-wide flex-wrap" style={{ color: activeTheme.textDim }}>
             <span>{ofensiva.length} Ofensiva</span>
             <span>·</span>
             <span>{defensiva.length} Defensiva</span>
@@ -1243,14 +1308,14 @@ export default function App() {
         {sesion.tipo !== "equipo" && <div className="mb-5" />}
 
         {/* tabs */}
-        <div className="flex gap-1 mb-6 p-1 rounded-lg" style={{ background: THEME.surface, border: `1px solid ${THEME.border}` }}>
+        <div className="flex gap-1 mb-6 p-1 rounded-lg" style={{ background: activeTheme.surface, border: `1px solid ${activeTheme.border}` }}>
           {(sesion.tipo === "equipo"
             ? [["plantilla", "Plantilla"], ["jugadas", "Playbook"], ["calendario", "Calendario"], ["liga", "Liga"]]
             : [["calendario", "Calendario"], ["liga", "Liga"]]
           ).map(([key, label]) => (
             <button key={key} onClick={() => { setTab(key); cerrarEditor(); cerrarVistaJugada(); }}
               className="flex-1 py-2 rounded-md text-[11px] font-semibold transition"
-              style={{ background: tab === key ? THEME.text : "transparent", color: tab === key ? THEME.bg : THEME.textDim }}>
+              style={{ background: tab === key ? activeTheme.text : "transparent", color: tab === key ? activeTheme.bg : activeTheme.textDim }}>
               {label}
             </button>
           ))}
@@ -1260,36 +1325,36 @@ export default function App() {
         {tab === "plantilla" && (
           <div>
             <div className="flex items-center justify-between mb-4">
-              <div className="f-display text-lg font-bold uppercase" style={{ color: THEME.text }}>Plantilla</div>
+              <div className="f-display text-lg font-bold uppercase" style={{ color: activeTheme.text }}>Plantilla</div>
               <button onClick={() => setModalJugadorAbierto(true)}
                 className="w-9 h-9 rounded-full flex items-center justify-center text-lg font-bold shrink-0"
-                style={{ background: THEME.text, color: THEME.bg }}>+</button>
+                style={{ background: activeTheme.text, color: activeTheme.bg }}>+</button>
             </div>
 
             {[["Ofensiva", ofensiva], ["Defensiva", defensiva]].map(([titulo, lista]) => (
               <div key={titulo} className="mb-6">
-                <div className="f-display text-base font-bold mb-2 uppercase" style={{ color: THEME.text }}>{titulo}</div>
-                {lista.length === 0 && <div className="text-sm py-3" style={{ color: THEME.textDim }}>Todavía no hay jugadores aquí.</div>}
+                <div className="f-display text-base font-bold mb-2 uppercase" style={{ color: activeTheme.text }}>{titulo}</div>
+                {lista.length === 0 && <div className="text-sm py-3" style={{ color: activeTheme.textDim }}>Todavía no hay jugadores aquí.</div>}
                 <div className="flex flex-col gap-2">
                   {lista.map((j) => (
                     <div key={j.id} className="flex items-center gap-3 rounded-lg px-3 py-2.5"
-                      style={{ background: THEME.surface, border: `1px solid ${THEME.border}` }}>
+                      style={{ background: activeTheme.surface, border: `1px solid ${activeTheme.border}` }}>
                       <button onClick={() => abrirVistaJugador(j)}
                         className="w-11 h-11 rounded-full shrink-0 overflow-hidden flex items-center justify-center"
-                        style={{ background: THEME.surface2, border: `2px solid ${POSITION_COLORS[j.posicion]}` }}>
+                        style={{ background: activeTheme.surface2, border: `2px solid ${POSITION_COLORS[j.posicion]}` }}>
                         {j.foto ? <img src={j.foto} alt="" className="w-full h-full object-cover" />
                           : <span className="text-xs f-mono font-bold" style={{ color: POSITION_COLORS[j.posicion] }}>{j.posicion}</span>}
                       </button>
                       <div className="flex-1 min-w-0" onClick={() => abrirVistaJugador(j)} style={{ cursor: "pointer" }}>
-                        <div className="text-sm font-semibold truncate" style={{ color: THEME.text }}>{j.nombre}</div>
+                        <div className="text-sm font-semibold truncate" style={{ color: activeTheme.text }}>{j.nombre}</div>
                         <div className="flex items-center gap-1.5 mt-0.5">
                           <span className="text-[10px] px-1.5 py-0.5 rounded font-bold f-mono"
                             style={{ background: POSITION_COLORS[j.posicion], color: "#0A0D0C" }}>{j.posicion}</span>
-                          <span className="text-xs" style={{ color: THEME.textDim }}>{NOMBRES_POSICION[j.posicion]}</span>
+                          <span className="text-xs" style={{ color: activeTheme.textDim }}>{NOMBRES_POSICION[j.posicion]}</span>
                         </div>
                       </div>
-                      <div className="text-base f-mono font-bold shrink-0" style={{ color: THEME.textDim }}>{j.numero}</div>
-                      <button onClick={() => eliminarJugador(j.id)} className="text-xs px-2 shrink-0" style={{ color: THEME.danger }}>✕</button>
+                      <div className="text-base f-mono font-bold shrink-0" style={{ color: activeTheme.textDim }}>{j.numero}</div>
+                      <button onClick={() => eliminarJugador(j.id)} className="text-xs px-2 shrink-0" style={{ color: activeTheme.danger }}>✕</button>
                     </div>
                   ))}
                 </div>
@@ -1303,23 +1368,23 @@ export default function App() {
           <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4"
             style={{ background: "rgba(6,8,7,0.75)" }} onClick={() => setModalJugadorAbierto(false)}>
             <div className="w-full sm:max-w-sm rounded-t-2xl sm:rounded-2xl p-5"
-              style={{ background: THEME.surface, border: `1px solid ${THEME.border}` }}
+              style={{ background: activeTheme.surface, border: `1px solid ${activeTheme.border}` }}
               onClick={(e) => e.stopPropagation()}>
-              <div className="text-[11px] f-mono mb-3 uppercase tracking-wide" style={{ color: THEME.textDim }}>Agregar jugador</div>
+              <div className="text-[11px] f-mono mb-3 uppercase tracking-wide" style={{ color: activeTheme.textDim }}>Agregar jugador</div>
               <div className="flex gap-3 mb-3 items-center">
                 <input type="file" accept="image/*" ref={inputFotoNueva} className="hidden" onChange={onFotoNuevaChange} />
                 <button onClick={() => inputFotoNueva.current?.click()}
                   className="w-12 h-12 rounded-full flex items-center justify-center shrink-0 overflow-hidden"
-                  style={{ background: THEME.surface2, border: `1px dashed ${THEME.border}` }}>
+                  style={{ background: activeTheme.surface2, border: `1px dashed ${activeTheme.border}` }}>
                   {fotoNueva ? <img src={fotoNueva} alt="" className="w-full h-full object-cover" />
-                    : <span className="text-lg" style={{ color: THEME.textDim }}>+</span>}
+                    : <span className="text-lg" style={{ color: activeTheme.textDim }}>+</span>}
                 </button>
                 <input placeholder="Nombre" value={nombre} onChange={(e) => setNombre(e.target.value)}
                   className="flex-1 rounded-md px-3 py-2 text-sm outline-none" style={inputStyle} />
                 <input placeholder="#" value={numero} onChange={(e) => setNumero(e.target.value.replace(/[^0-9]/g, ""))}
                   className="w-14 rounded-md px-2 py-2 text-sm outline-none f-mono text-center" style={inputStyle} />
               </div>
-              {errorFoto && <div className="text-xs mb-3" style={{ color: THEME.danger }}>{errorFoto}</div>}
+              {errorFoto && <div className="text-xs mb-3" style={{ color: activeTheme.danger }}>{errorFoto}</div>}
               <select value={posicion} onChange={(e) => setPosicion(e.target.value)}
                 className="w-full rounded-md px-3 py-2 text-sm outline-none mb-4" style={inputStyle}>
                 <optgroup label="Ofensiva">
@@ -1331,9 +1396,9 @@ export default function App() {
               </select>
               <div className="flex gap-2">
                 <button onClick={() => setModalJugadorAbierto(false)} className="flex-1 py-3 rounded-lg font-semibold text-sm"
-                  style={{ background: THEME.surface2, color: THEME.text, border: `1px solid ${THEME.border}` }}>Cancelar</button>
+                  style={{ background: activeTheme.surface2, color: activeTheme.text, border: `1px solid ${activeTheme.border}` }}>Cancelar</button>
                 <button onClick={agregarJugador} className="flex-1 py-3 rounded-lg font-semibold text-sm"
-                  style={{ background: THEME.text, color: THEME.bg }}>Añadir</button>
+                  style={{ background: activeTheme.text, color: activeTheme.bg }}>Añadir</button>
               </div>
             </div>
           </div>
@@ -1344,7 +1409,7 @@ export default function App() {
           <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4"
             style={{ background: "rgba(6,8,7,0.75)" }} onClick={cerrarModalJugador}>
             <div className="w-full sm:max-w-sm rounded-t-2xl sm:rounded-2xl p-5"
-              style={{ background: THEME.surface, border: `1px solid ${THEME.border}` }}
+              style={{ background: activeTheme.surface, border: `1px solid ${activeTheme.border}` }}
               onClick={(e) => e.stopPropagation()}>
               <input type="file" accept="image/*" ref={inputFotoModalJugador} className="hidden" onChange={onFotoModalChange} />
 
@@ -1352,37 +1417,37 @@ export default function App() {
                 <div>
                   <div className="flex flex-col items-center mb-4">
                     <div className="w-28 h-28 rounded-full overflow-hidden mb-3 flex items-center justify-center"
-                      style={{ background: THEME.surface2, border: `3px solid ${POSITION_COLORS[jugadorModal.posicion]}` }}>
+                      style={{ background: activeTheme.surface2, border: `3px solid ${POSITION_COLORS[jugadorModal.posicion]}` }}>
                       {jugadorModal.foto ? <img src={jugadorModal.foto} alt="" className="w-full h-full object-cover" />
                         : <span className="text-2xl f-mono font-bold" style={{ color: POSITION_COLORS[jugadorModal.posicion] }}>{jugadorModal.posicion}</span>}
                     </div>
-                    <div className="f-display text-2xl font-bold" style={{ color: THEME.text }}>{jugadorModal.nombre}</div>
+                    <div className="f-display text-2xl font-bold" style={{ color: activeTheme.text }}>{jugadorModal.nombre}</div>
                     <div className="flex items-center gap-2 mt-1">
                       <span className="text-[11px] px-2 py-0.5 rounded font-bold f-mono"
                         style={{ background: POSITION_COLORS[jugadorModal.posicion], color: "#0A0D0C" }}>{jugadorModal.posicion}</span>
-                      <span className="text-xs" style={{ color: THEME.textDim }}>{NOMBRES_POSICION[jugadorModal.posicion]}</span>
-                      <span className="text-sm f-mono font-bold" style={{ color: THEME.textDim }}>#{jugadorModal.numero}</span>
+                      <span className="text-xs" style={{ color: activeTheme.textDim }}>{NOMBRES_POSICION[jugadorModal.posicion]}</span>
+                      <span className="text-sm f-mono font-bold" style={{ color: activeTheme.textDim }}>#{jugadorModal.numero}</span>
                     </div>
                   </div>
                   <div className="flex gap-2">
                     <button onClick={cerrarModalJugador} className="flex-1 py-3 rounded-lg font-semibold text-sm"
-                      style={{ background: THEME.surface2, color: THEME.text, border: `1px solid ${THEME.border}` }}>Cerrar</button>
+                      style={{ background: activeTheme.surface2, color: activeTheme.text, border: `1px solid ${activeTheme.border}` }}>Cerrar</button>
                     <button onClick={pasarAEditarJugador} className="flex-1 py-3 rounded-lg font-semibold text-sm"
-                      style={{ background: THEME.text, color: THEME.bg }}>Editar</button>
+                      style={{ background: activeTheme.text, color: activeTheme.bg }}>Editar</button>
                   </div>
                 </div>
               ) : (
                 <div>
-                  <div className="text-[11px] f-mono mb-3 uppercase tracking-wide" style={{ color: THEME.textDim }}>Editar jugador</div>
+                  <div className="text-[11px] f-mono mb-3 uppercase tracking-wide" style={{ color: activeTheme.textDim }}>Editar jugador</div>
                   <div className="flex justify-center mb-4">
                     <button onClick={() => inputFotoModalJugador.current?.click()}
                       className="w-20 h-20 rounded-full flex items-center justify-center overflow-hidden"
-                      style={{ background: THEME.surface2, border: `1px dashed ${THEME.border}` }}>
+                      style={{ background: activeTheme.surface2, border: `1px dashed ${activeTheme.border}` }}>
                       {jugadorModal.foto ? <img src={jugadorModal.foto} alt="" className="w-full h-full object-cover" />
-                        : <span className="text-xs" style={{ color: THEME.textDim }}>Cambiar foto</span>}
+                        : <span className="text-xs" style={{ color: activeTheme.textDim }}>Cambiar foto</span>}
                     </button>
                   </div>
-                  {errorFoto && <div className="text-xs mb-3 text-center" style={{ color: THEME.danger }}>{errorFoto}</div>}
+                  {errorFoto && <div className="text-xs mb-3 text-center" style={{ color: activeTheme.danger }}>{errorFoto}</div>}
                   <div className="flex flex-col gap-2 mb-3">
                     <input placeholder="Nombre" value={jugadorModal.nombre}
                       onChange={(e) => actualizarCampoModal("nombre", e.target.value)}
@@ -1404,9 +1469,9 @@ export default function App() {
                   </div>
                   <div className="flex gap-2">
                     <button onClick={() => setJugadorModal((m) => ({ ...m, modo: "ver" }))} className="flex-1 py-3 rounded-lg font-semibold text-sm"
-                      style={{ background: THEME.surface2, color: THEME.text, border: `1px solid ${THEME.border}` }}>Cancelar</button>
+                      style={{ background: activeTheme.surface2, color: activeTheme.text, border: `1px solid ${activeTheme.border}` }}>Cancelar</button>
                     <button onClick={guardarEdicionJugador} className="flex-1 py-3 rounded-lg font-semibold text-sm"
-                      style={{ background: THEME.text, color: THEME.bg }}>Guardar cambios</button>
+                      style={{ background: activeTheme.text, color: activeTheme.bg }}>Guardar cambios</button>
                   </div>
                 </div>
               )}
@@ -1419,38 +1484,38 @@ export default function App() {
           <div>
             <div className="flex gap-2 mb-6">
               <button onClick={() => iniciarNuevaJugada("ofensiva")} className="flex-1 py-3 rounded-lg font-semibold text-sm"
-                style={{ background: THEME.offense, color: "#1A1200" }}>+ Jugada ofensiva</button>
+                style={{ background: activeTheme.offense, color: "#1A1200" }}>+ Jugada ofensiva</button>
               <button onClick={() => iniciarNuevaJugada("defensiva")} className="flex-1 py-3 rounded-lg font-semibold text-sm"
-                style={{ background: THEME.defense, color: "#0A1522" }}>+ Jugada defensiva</button>
+                style={{ background: activeTheme.defense, color: "#0A1522" }}>+ Jugada defensiva</button>
             </div>
 
-            {jugadas.length === 0 && <div className="text-sm text-center py-10" style={{ color: THEME.textDim }}>
+            {jugadas.length === 0 && <div className="text-sm text-center py-10" style={{ color: activeTheme.textDim }}>
               Aún no has creado ninguna jugada. Empieza con un botón de arriba.
             </div>}
 
             {jugadasAgrupadas.map((grupo) => (
               <div key={grupo.nombreF} className="mb-2">
                 <div className="flex items-center gap-3 my-4">
-                  <div className="flex-1 h-px" style={{ background: THEME.border }} />
-                  <span className="text-[11px] f-mono uppercase tracking-wide shrink-0" style={{ color: THEME.textDim }}>{grupo.nombreF}</span>
-                  <div className="flex-1 h-px" style={{ background: THEME.border }} />
+                  <div className="flex-1 h-px" style={{ background: activeTheme.border }} />
+                  <span className="text-[11px] f-mono uppercase tracking-wide shrink-0" style={{ color: activeTheme.textDim }}>{grupo.nombreF}</span>
+                  <div className="flex-1 h-px" style={{ background: activeTheme.border }} />
                 </div>
                 <div className="flex flex-col gap-3">
                   {grupo.items.map((j) => (
                     <div key={j.id} className="rounded-xl p-3 flex items-center gap-3"
-                      style={{ background: THEME.surface, border: `1px solid ${THEME.border}` }}>
+                      style={{ background: activeTheme.surface, border: `1px solid ${activeTheme.border}` }}>
                       <button onClick={() => abrirVistaJugada(j)} className="w-16 h-24 rounded-md overflow-hidden shrink-0">
                         <Field tokens={j.tokens} asignaciones={j.asignaciones} side={j.lado} mode="ver" losY={j.losY} mini />
                       </button>
                       <div className="flex-1 min-w-0">
-                        <div className="text-sm font-semibold truncate" style={{ color: THEME.text }}>{j.nombre}</div>
-                        <div className="text-[11px] f-mono uppercase" style={{ color: j.lado === "ofensiva" ? THEME.offense : THEME.defense }}>{j.lado}</div>
+                        <div className="text-sm font-semibold truncate" style={{ color: activeTheme.text }}>{j.nombre}</div>
+                        <div className="text-[11px] f-mono uppercase" style={{ color: j.lado === "ofensiva" ? activeTheme.offense : activeTheme.defense }}>{j.lado}</div>
                         <div className="flex gap-2 mt-2 flex-wrap">
                           <button onClick={() => abrirVistaJugada(j)} className="text-xs px-3 py-1 rounded font-medium"
-                            style={{ background: THEME.surface2, color: THEME.text }}>Ver</button>
+                            style={{ background: activeTheme.surface2, color: activeTheme.text }}>Ver</button>
                           <button onClick={() => abrirJugada(j)} className="text-xs px-3 py-1 rounded font-medium"
-                            style={{ background: THEME.surface2, color: THEME.text }}>Editar</button>
-                          <button onClick={() => eliminarJugada(j.id)} className="text-xs px-3 py-1 rounded font-medium" style={{ color: THEME.danger }}>Eliminar</button>
+                            style={{ background: activeTheme.surface2, color: activeTheme.text }}>Editar</button>
+                          <button onClick={() => eliminarJugada(j.id)} className="text-xs px-3 py-1 rounded font-medium" style={{ color: activeTheme.danger }}>Eliminar</button>
                         </div>
                       </div>
                     </div>
@@ -1466,20 +1531,20 @@ export default function App() {
           <div>
             <div className="flex items-center justify-between mb-3">
               <div>
-                <div className="f-display text-lg font-bold" style={{ color: THEME.text }}>{jugadaEnVista.nombre}</div>
-                <div className="text-[11px] f-mono uppercase" style={{ color: jugadaEnVista.lado === "ofensiva" ? THEME.offense : THEME.defense }}>
+                <div className="f-display text-lg font-bold" style={{ color: activeTheme.text }}>{jugadaEnVista.nombre}</div>
+                <div className="text-[11px] f-mono uppercase" style={{ color: jugadaEnVista.lado === "ofensiva" ? activeTheme.offense : activeTheme.defense }}>
                   {jugadaEnVista.lado} · {jugadaEnVista.formacion || "Personalizada"} · Solo lectura
                 </div>
               </div>
               <button onClick={cerrarVistaJugada} className="text-xs px-3 py-1.5 rounded font-medium"
-                style={{ background: THEME.surface2, color: THEME.text }}>Cerrar</button>
+                style={{ background: activeTheme.surface2, color: activeTheme.text }}>Cerrar</button>
             </div>
             <div className="rounded-xl overflow-hidden mb-3" style={{ aspectRatio: `${FIELD_W}/${FIELD_H}` }}>
               <Field tokens={jugadaEnVista.tokens} asignaciones={jugadaEnVista.asignaciones} side={jugadaEnVista.lado} mode="ver" losY={jugadaEnVista.losY} />
             </div>
             <button onClick={() => { abrirJugada(jugadaEnVista); setViendoJugadaId(null); }}
               className="w-full py-3 rounded-lg font-semibold text-sm"
-              style={{ background: THEME.text, color: THEME.bg }}>Editar esta jugada</button>
+              style={{ background: activeTheme.text, color: activeTheme.bg }}>Editar esta jugada</button>
           </div>
         )}
 
@@ -1487,24 +1552,24 @@ export default function App() {
         {tab === "jugadas" && eligiendoFormacion && (
           <div>
             <div className="flex items-center justify-between mb-4">
-              <div className="f-display text-lg font-bold uppercase" style={{ color: THEME.text }}>Elegir formación</div>
-              <button onClick={() => setEligiendoFormacion(null)} className="text-xs" style={{ color: THEME.textDim }}>Cancelar</button>
+              <div className="f-display text-lg font-bold uppercase" style={{ color: activeTheme.text }}>Elegir formación</div>
+              <button onClick={() => setEligiendoFormacion(null)} className="text-xs" style={{ color: activeTheme.textDim }}>Cancelar</button>
             </div>
             <div className="grid grid-cols-2 gap-3">
               {(eligiendoFormacion === "ofensiva" ? OFFENSE_FORMATIONS : DEFENSE_FORMATIONS).map((f) => (
                 <button key={f.nombre} onClick={() => elegirFormacion(f)}
-                  className="rounded-xl p-2 text-left" style={{ background: THEME.surface, border: `1px solid ${THEME.border}` }}>
+                  className="rounded-xl p-2 text-left" style={{ background: activeTheme.surface, border: `1px solid ${activeTheme.border}` }}>
                   <div className="w-full rounded-md overflow-hidden mb-2" style={{ aspectRatio: `${FIELD_W}/${FIELD_H}` }}>
                     <Field tokens={f.tokens.map((t) => ({ ...t, id: t.pos }))} asignaciones={[]} side={eligiendoFormacion} mode="ver" mini />
                   </div>
-                  <div className="text-xs font-semibold" style={{ color: THEME.text }}>{f.nombre}</div>
+                  <div className="text-xs font-semibold" style={{ color: activeTheme.text }}>{f.nombre}</div>
                 </button>
               ))}
               <button onClick={() => elegirFormacion(null)}
                 className="rounded-xl p-2 flex flex-col items-center justify-center gap-2"
-                style={{ background: THEME.surface, border: `1px dashed ${THEME.border}`, aspectRatio: "0.65" }}>
-                <span className="text-2xl" style={{ color: THEME.textDim }}>＋</span>
-                <span className="text-xs font-semibold" style={{ color: THEME.textDim }}>Empezar en blanco</span>
+                style={{ background: activeTheme.surface, border: `1px dashed ${activeTheme.border}`, aspectRatio: "0.65" }}>
+                <span className="text-2xl" style={{ color: activeTheme.textDim }}>＋</span>
+                <span className="text-xs font-semibold" style={{ color: activeTheme.textDim }}>Empezar en blanco</span>
               </button>
             </div>
           </div>
@@ -1516,24 +1581,24 @@ export default function App() {
             <input value={nombreJugada} onChange={(e) => setNombreJugada(e.target.value)}
               placeholder="Nombre de la jugada (ej. Slant derecho)"
               className="w-full rounded-md px-3 py-2 mb-3 text-sm outline-none font-semibold"
-              style={{ background: THEME.surface, color: THEME.text, border: `1px solid ${THEME.border}` }} />
+              style={{ background: activeTheme.surface, color: activeTheme.text, border: `1px solid ${activeTheme.border}` }} />
 
-            <div className="flex gap-1 mb-3 p-1 rounded-lg" style={{ background: THEME.surface, border: `1px solid ${THEME.border}` }}>
+            <div className="flex gap-1 mb-3 p-1 rounded-lg" style={{ background: activeTheme.surface, border: `1px solid ${activeTheme.border}` }}>
               {[["colocar", "Colocar"], ["rutas", editando.lado === "ofensiva" ? "Rutas/Bloqueos" : "Coberturas"], ["linea", "Línea"], ["eliminar", "Quitar"]].map(([key, label]) => (
                 <button key={key} onClick={() => { setModo(key); setSeleccion(null); setRutaEnCurso(null); setZonaSeleccionada(null); }}
                   className="flex-1 py-2 rounded-md text-xs font-semibold"
-                  style={{ background: modo === key ? THEME.text : "transparent", color: modo === key ? THEME.bg : THEME.textDim }}>
+                  style={{ background: modo === key ? activeTheme.text : "transparent", color: modo === key ? activeTheme.bg : activeTheme.textDim }}>
                   {label}
                 </button>
               ))}
             </div>
 
             {modo === "rutas" && editando.lado === "defensiva" && (
-              <div className="flex gap-1 mb-3 p-1 rounded-lg" style={{ background: THEME.surface, border: `1px solid ${THEME.border}` }}>
+              <div className="flex gap-1 mb-3 p-1 rounded-lg" style={{ background: activeTheme.surface, border: `1px solid ${activeTheme.border}` }}>
                 {[["personal", "Personal"], ["zona", "Zona"]].map(([key, label]) => (
                   <button key={key} onClick={() => setCoberturaTipo(key)}
                     className="flex-1 py-1.5 rounded-md text-xs font-semibold"
-                    style={{ background: coberturaTipo === key ? THEME.text : "transparent", color: coberturaTipo === key ? THEME.bg : THEME.textDim }}>
+                    style={{ background: coberturaTipo === key ? activeTheme.text : "transparent", color: coberturaTipo === key ? activeTheme.bg : activeTheme.textDim }}>
                     {label}
                   </button>
                 ))}
@@ -1546,7 +1611,7 @@ export default function App() {
                 onFieldClick={onFieldClick} onTokenClick={onTokenClick} onRouteClick={onRouteClick} onZonaArrastrar={moverZona} />
             </div>
 
-            <div className="text-xs mb-3 min-h-[2.2em]" style={{ color: THEME.textDim }}>
+            <div className="text-xs mb-3 min-h-[2.2em]" style={{ color: activeTheme.textDim }}>
               {modo === "colocar" && !seleccion && "Toca el campo para agregar un jugador. Toca un jugador para moverlo."}
               {modo === "colocar" && seleccion && "Ahora toca el punto del campo al que quieres moverlo."}
               {modo === "rutas" && !rutaEnCurso && editando.lado === "ofensiva" && "Toca un jugador: si es liniero se marca su bloqueo, si no, su ruta."}
@@ -1560,11 +1625,11 @@ export default function App() {
             {modo === "rutas" && rutaEnCurso && (
               <div className="flex gap-2 mb-3">
                 <button onClick={() => setRutaEnCurso(null)} className="flex-1 py-2 rounded-lg text-xs font-semibold"
-                  style={{ background: THEME.surface2, color: THEME.text }}>Cancelar</button>
+                  style={{ background: activeTheme.surface2, color: activeTheme.text }}>Cancelar</button>
                 {rutaEnCurso.tipo !== "zona" && (
                   <button onClick={terminarRuta} disabled={rutaEnCurso.puntos.length === 0}
                     className="flex-1 py-2 rounded-lg text-xs font-semibold"
-                    style={{ background: THEME.text, color: THEME.bg, opacity: rutaEnCurso.puntos.length === 0 ? 0.5 : 1 }}>
+                    style={{ background: activeTheme.text, color: activeTheme.bg, opacity: rutaEnCurso.puntos.length === 0 ? 0.5 : 1 }}>
                     Terminar
                   </button>
                 )}
@@ -1573,9 +1638,9 @@ export default function App() {
 
             <div className="flex gap-2 mt-1">
               <button onClick={cerrarEditor} className="flex-1 py-3 rounded-lg font-semibold text-sm"
-                style={{ background: THEME.surface, color: THEME.text, border: `1px solid ${THEME.border}` }}>Cancelar</button>
+                style={{ background: activeTheme.surface, color: activeTheme.text, border: `1px solid ${activeTheme.border}` }}>Cancelar</button>
               <button onClick={guardarJugada} className="flex-1 py-3 rounded-lg font-semibold text-sm"
-                style={{ background: THEME.text, color: THEME.bg }}>Guardar jugada</button>
+                style={{ background: activeTheme.text, color: activeTheme.bg }}>Guardar jugada</button>
             </div>
           </div>
         )}
@@ -1584,16 +1649,16 @@ export default function App() {
         {tab === "calendario" && (
           <div>
             <div className="flex items-center justify-between mb-4">
-              <div className="f-display text-lg font-bold uppercase" style={{ color: THEME.text }}>Calendario</div>
+              <div className="f-display text-lg font-bold uppercase" style={{ color: activeTheme.text }}>Calendario</div>
               {sesion.tipo === "creador" && (
                 <button onClick={abrirModalPartido}
                   className="w-9 h-9 rounded-full flex items-center justify-center text-lg font-bold shrink-0"
-                  style={{ background: THEME.text, color: THEME.bg }}>+</button>
+                  style={{ background: activeTheme.text, color: activeTheme.bg }}>+</button>
               )}
             </div>
 
             {partidosLiga.length === 0 && (
-              <div className="text-sm text-center py-10" style={{ color: THEME.textDim }}>
+              <div className="text-sm text-center py-10" style={{ color: activeTheme.textDim }}>
                 No hay juegos programados todavía.
               </div>
             )}
@@ -1605,21 +1670,21 @@ export default function App() {
                   <button onClick={() => toggleJornada(grupo.jornada)}
                     className="w-full flex items-center justify-between gap-2 px-4 py-3.5 rounded-xl text-left select-none"
                     style={{
-                      background: abierta ? THEME.surface2 : THEME.surface,
-                      border: `1px solid ${abierta ? THEME.offense + "55" : THEME.border}`,
+                      background: abierta ? activeTheme.surface2 : activeTheme.surface,
+                      border: `1px solid ${abierta ? activeTheme.offense + "55" : activeTheme.border}`,
                     }}>
-                    <span className="f-mono text-sm font-bold uppercase tracking-wide" style={{ color: THEME.text }}>
+                    <span className="f-mono text-sm font-bold uppercase tracking-wide" style={{ color: activeTheme.text }}>
                       {grupo.jornada === "Sin jornada" ? "Sin jornada" : `Jornada ${grupo.jornada}`}
                     </span>
                     <span className="flex items-center gap-2 shrink-0">
-                      <span className="text-[11px] f-mono uppercase" style={{ color: THEME.textDim }}>
+                      <span className="text-[11px] f-mono uppercase" style={{ color: activeTheme.textDim }}>
                         {grupo.items.length} juego{grupo.items.length !== 1 ? "s" : ""}
                       </span>
                       <span style={{
                         display: "inline-block",
                         transform: abierta ? "rotate(90deg)" : "rotate(0deg)",
                         transition: "transform 0.15s",
-                        color: abierta ? THEME.offense : THEME.textDim,
+                        color: abierta ? activeTheme.offense : activeTheme.textDim,
                       }}>▸</span>
                     </span>
                   </button>
@@ -1635,12 +1700,12 @@ export default function App() {
                           return (
                             <div className="flex flex-col items-center gap-1.5 w-20 shrink-0">
                               <div className="w-16 h-16 rounded-full overflow-hidden flex items-center justify-center"
-                                style={{ background: THEME.surface2, border: `1px solid ${THEME.border}` }}>
+                                style={{ background: activeTheme.surface2, border: `1px solid ${activeTheme.border}` }}>
                                 {foto ? <img src={foto} alt="" className="w-full h-full object-cover" />
-                                  : <span className="text-[10px] f-mono font-bold text-center px-1" style={{ color: THEME.textDim }}>{nombreEquipo}</span>}
+                                  : <span className="text-[10px] f-mono font-bold text-center px-1" style={{ color: activeTheme.textDim }}>{nombreEquipo}</span>}
                               </div>
-                              <div className="text-xs font-semibold text-center truncate w-full" style={{ color: nombreEquipo === equipo ? THEME.offense : THEME.text }}>{nombreEquipo}</div>
-                              <div className="text-[11px] f-mono" style={{ color: THEME.textDim }}>{registroDeEquipo(nombreEquipo)}</div>
+                              <div className="text-xs font-semibold text-center truncate w-full" style={{ color: nombreEquipo === equipo ? activeTheme.offense : activeTheme.text }}>{nombreEquipo}</div>
+                              <div className="text-[11px] f-mono" style={{ color: activeTheme.textDim }}>{registroDeEquipo(nombreEquipo)}</div>
                             </div>
                           );
                         };
@@ -1648,25 +1713,25 @@ export default function App() {
                         if (p.bye) {
                           return (
                             <div key={p.id} className="rounded-xl p-5 select-none"
-                              style={{ background: THEME.surface, border: `1px solid ${THEME.border}` }}
+                              style={{ background: activeTheme.surface, border: `1px solid ${activeTheme.border}` }}
                               onMouseDown={() => iniciarPulsacionLarga(p.id)} onMouseUp={cancelarPulsacionLarga} onMouseLeave={cancelarPulsacionLarga}
                               onTouchStart={() => iniciarPulsacionLarga(p.id)} onTouchEnd={cancelarPulsacionLarga} onTouchCancel={cancelarPulsacionLarga}>
                               <div className="flex items-center justify-between gap-1">
                                 {renderLogo(p.local)}
 
                                 <div className="flex-1 flex flex-col items-center gap-1.5 min-w-0 px-2">
-                                  <div className="text-xs f-mono text-center" style={{ color: THEME.textDim }}>{formatearFecha(p.fecha)}</div>
-                                  <div className="f-mono text-2xl font-bold text-center mt-1" style={{ color: THEME.textDim }}>BYE</div>
+                                  <div className="text-xs f-mono text-center" style={{ color: activeTheme.textDim }}>{formatearFecha(p.fecha)}</div>
+                                  <div className="f-mono text-2xl font-bold text-center mt-1" style={{ color: activeTheme.textDim }}>BYE</div>
                                   <span className="text-[11px] px-2 py-1 rounded font-bold f-mono uppercase mt-0.5"
-                                    style={{ background: THEME.surface2, color: THEME.textDim, border: `1px solid ${THEME.border}` }}>Descanso</span>
+                                    style={{ background: activeTheme.surface2, color: activeTheme.textDim, border: `1px solid ${activeTheme.border}` }}>Descanso</span>
                                 </div>
 
                                 <div className="flex flex-col items-center gap-1.5 w-20 shrink-0">
                                   <div className="w-16 h-16 rounded-full flex items-center justify-center"
-                                    style={{ background: THEME.surface2, border: `1px dashed ${THEME.border}` }}>
-                                    <span className="text-sm f-mono font-bold" style={{ color: THEME.textDim }}>BYE</span>
+                                    style={{ background: activeTheme.surface2, border: `1px dashed ${activeTheme.border}` }}>
+                                    <span className="text-sm f-mono font-bold" style={{ color: activeTheme.textDim }}>BYE</span>
                                   </div>
-                                  <div className="text-xs font-semibold text-center" style={{ color: THEME.textDim }}>Sin rival</div>
+                                  <div className="text-xs font-semibold text-center" style={{ color: activeTheme.textDim }}>Sin rival</div>
                                 </div>
                               </div>
                             </div>
@@ -1675,31 +1740,31 @@ export default function App() {
 
                         return (
                           <div key={p.id} className="rounded-xl p-5 select-none"
-                            style={{ background: THEME.surface, border: `1px solid ${THEME.border}` }}
+                            style={{ background: activeTheme.surface, border: `1px solid ${activeTheme.border}` }}
                             onMouseDown={() => iniciarPulsacionLarga(p.id)} onMouseUp={cancelarPulsacionLarga} onMouseLeave={cancelarPulsacionLarga}
                             onTouchStart={() => iniciarPulsacionLarga(p.id)} onTouchEnd={cancelarPulsacionLarga} onTouchCancel={cancelarPulsacionLarga}>
                             <div className="flex items-center justify-between gap-1">
                               {renderLogo(p.local)}
-                              <div className="f-mono text-3xl font-bold text-center px-1 shrink-0" style={{ color: tieneMarcador ? THEME.text : THEME.textDim }}>
+                              <div className="f-mono text-3xl font-bold text-center px-1 shrink-0" style={{ color: tieneMarcador ? activeTheme.text : activeTheme.textDim }}>
                                 {tieneMarcador ? p.marcadorLocal : "–"}
                               </div>
 
                               <div className="flex flex-col items-center gap-1.5 min-w-0 px-2">
-                                <div className="text-xs f-mono text-center" style={{ color: THEME.textDim }}>{formatearFecha(p.fecha)}</div>
-                                {p.hora && <div className="text-xs f-mono text-center" style={{ color: THEME.textDim }}>{formatearHora(p.hora)}</div>}
+                                <div className="text-xs f-mono text-center" style={{ color: activeTheme.textDim }}>{formatearFecha(p.fecha)}</div>
+                                {p.hora && <div className="text-xs f-mono text-center" style={{ color: activeTheme.textDim }}>{formatearHora(p.hora)}</div>}
                                 {r && (
                                   <span className="text-[11px] px-2 py-1 rounded font-bold f-mono uppercase mt-0.5"
                                     style={{ background: colorResultado(r), color: "#0A0D0C" }}>{textoResultado(r)}</span>
                                 )}
                               </div>
 
-                              <div className="f-mono text-3xl font-bold text-center px-1 shrink-0" style={{ color: tieneMarcador ? THEME.text : THEME.textDim }}>
+                              <div className="f-mono text-3xl font-bold text-center px-1 shrink-0" style={{ color: tieneMarcador ? activeTheme.text : activeTheme.textDim }}>
                                 {tieneMarcador ? p.marcadorVisitante : "–"}
                               </div>
                               {renderLogo(p.visitante)}
                             </div>
 
-                            {p.lugar && <div className="text-xs text-center mt-4" style={{ color: THEME.textDim }}>📍 {p.lugar}</div>}
+                            {p.lugar && <div className="text-xs text-center mt-4" style={{ color: activeTheme.textDim }}>📍 {p.lugar}</div>}
                           </div>
                         );
                       })}
@@ -1714,37 +1779,37 @@ export default function App() {
         {/* ============ TAB LIGA (tabla + equipos) ============ */}
         {tab === "liga" && (
           <div>
-            <div className="f-display text-lg font-bold uppercase mb-4" style={{ color: THEME.text }}>Tabla de posiciones</div>
+            <div className="f-display text-lg font-bold uppercase mb-4" style={{ color: activeTheme.text }}>Tabla de posiciones</div>
 
-            <div className="rounded-xl overflow-hidden mb-6" style={{ background: THEME.surface, border: `1px solid ${THEME.border}` }}>
+            <div className="rounded-xl overflow-hidden mb-6" style={{ background: activeTheme.surface, border: `1px solid ${activeTheme.border}` }}>
               <table className="w-full text-xs">
                 <thead>
-                  <tr style={{ borderBottom: `1px solid ${THEME.border}` }}>
-                    <th className="text-center py-2 px-2 f-mono uppercase" style={{ color: THEME.textDim }}>#</th>
-                    <th className="text-left py-2 px-2 f-mono uppercase" style={{ color: THEME.textDim }}>Equipo</th>
-                    <th className="text-center py-2 px-1 f-mono uppercase" style={{ color: THEME.textDim }}>PJ</th>
-                    <th className="text-center py-2 px-1 f-mono uppercase" style={{ color: THEME.textDim }}>G</th>
-                    <th className="text-center py-2 px-1 f-mono uppercase" style={{ color: THEME.textDim }}>P</th>
-                    <th className="text-center py-2 px-1 f-mono uppercase" style={{ color: THEME.textDim }}>E</th>
-                    <th className="text-center py-2 px-1 f-mono uppercase" style={{ color: THEME.textDim }}>DIF</th>
+                  <tr style={{ borderBottom: `1px solid ${activeTheme.border}` }}>
+                    <th className="text-center py-2 px-2 f-mono uppercase" style={{ color: activeTheme.textDim }}>#</th>
+                    <th className="text-left py-2 px-2 f-mono uppercase" style={{ color: activeTheme.textDim }}>Equipo</th>
+                    <th className="text-center py-2 px-1 f-mono uppercase" style={{ color: activeTheme.textDim }}>PJ</th>
+                    <th className="text-center py-2 px-1 f-mono uppercase" style={{ color: activeTheme.textDim }}>G</th>
+                    <th className="text-center py-2 px-1 f-mono uppercase" style={{ color: activeTheme.textDim }}>P</th>
+                    <th className="text-center py-2 px-1 f-mono uppercase" style={{ color: activeTheme.textDim }}>E</th>
+                    <th className="text-center py-2 px-1 f-mono uppercase" style={{ color: activeTheme.textDim }}>DIF</th>
                   </tr>
                 </thead>
                 <tbody>
                   {filasLiga.map((eq, idx) => (
-                    <tr key={eq.id} style={{ borderBottom: `1px solid ${THEME.border}`, background: eq.esPropio ? THEME.surface2 : "transparent" }}>
-                      <td className="text-center py-2 px-2 f-mono font-bold" style={{ color: THEME.textDim }}>{idx + 1}</td>
-                      <td className="py-2 px-2 font-semibold truncate max-w-[110px]" style={{ color: eq.esPropio ? THEME.offense : THEME.text }}>{eq.nombre}</td>
-                      <td className="text-center py-2 px-1 f-mono" style={{ color: THEME.text }}>{eq.g + eq.p + eq.e}</td>
-                      <td className="text-center py-2 px-1 f-mono" style={{ color: THEME.win }}>{eq.g}</td>
-                      <td className="text-center py-2 px-1 f-mono" style={{ color: THEME.danger }}>{eq.p}</td>
-                      <td className="text-center py-2 px-1 f-mono" style={{ color: THEME.textDim }}>{eq.e}</td>
-                      <td className="text-center py-2 px-1 f-mono" style={{ color: THEME.text }}>{eq.pf - eq.pc > 0 ? "+" : ""}{eq.pf - eq.pc}</td>
+                    <tr key={eq.id} style={{ borderBottom: `1px solid ${activeTheme.border}`, background: eq.esPropio ? activeTheme.surface2 : "transparent" }}>
+                      <td className="text-center py-2 px-2 f-mono font-bold" style={{ color: activeTheme.textDim }}>{idx + 1}</td>
+                      <td className="py-2 px-2 font-semibold truncate max-w-[110px]" style={{ color: eq.esPropio ? activeTheme.offense : activeTheme.text }}>{eq.nombre}</td>
+                      <td className="text-center py-2 px-1 f-mono" style={{ color: activeTheme.text }}>{eq.g + eq.p + eq.e}</td>
+                      <td className="text-center py-2 px-1 f-mono" style={{ color: activeTheme.win }}>{eq.g}</td>
+                      <td className="text-center py-2 px-1 f-mono" style={{ color: activeTheme.danger }}>{eq.p}</td>
+                      <td className="text-center py-2 px-1 f-mono" style={{ color: activeTheme.textDim }}>{eq.e}</td>
+                      <td className="text-center py-2 px-1 f-mono" style={{ color: activeTheme.text }}>{eq.pf - eq.pc > 0 ? "+" : ""}{eq.pf - eq.pc}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
-            <div className="text-[11px]" style={{ color: THEME.textDim }}>
+            <div className="text-[11px]" style={{ color: activeTheme.textDim }}>
               La tabla se calcula automáticamente a partir de los marcadores guardados en el Calendario. Los juegos BYE no se contabilizan.
             </div>
           </div>
@@ -1758,20 +1823,20 @@ export default function App() {
             <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4"
               style={{ background: "rgba(6,8,7,0.75)" }} onClick={() => setMenuPartidoAbierto(null)}>
               <div className="w-full sm:max-w-sm rounded-t-2xl sm:rounded-2xl p-5"
-                style={{ background: THEME.surface, border: `1px solid ${THEME.border}` }}
+                style={{ background: activeTheme.surface, border: `1px solid ${activeTheme.border}` }}
                 onClick={(e) => e.stopPropagation()}>
-                <div className="text-[11px] f-mono mb-3 uppercase tracking-wide" style={{ color: THEME.textDim }}>
+                <div className="text-[11px] f-mono mb-3 uppercase tracking-wide" style={{ color: activeTheme.textDim }}>
                   {p.bye ? "Descanso (BYE)" : `${p.local} vs. ${p.visitante}`}
                 </div>
                 <div className="flex flex-col gap-2">
                   <button onClick={() => { setMenuPartidoAbierto(null); abrirEditarPartido(p); }}
                     className="w-full py-3 rounded-lg font-semibold text-sm"
-                    style={{ background: THEME.surface2, color: THEME.text, border: `1px solid ${THEME.border}` }}>Editar encuentro</button>
+                    style={{ background: activeTheme.surface2, color: activeTheme.text, border: `1px solid ${activeTheme.border}` }}>Editar encuentro</button>
                   <button onClick={() => { setMenuPartidoAbierto(null); eliminarPartido(p.id); }}
                     className="w-full py-3 rounded-lg font-semibold text-sm"
-                    style={{ background: THEME.surface2, color: THEME.danger }}>Eliminar encuentro</button>
+                    style={{ background: activeTheme.surface2, color: activeTheme.danger }}>Eliminar encuentro</button>
                   <button onClick={() => setMenuPartidoAbierto(null)}
-                    className="w-full py-2.5 rounded-lg font-semibold text-sm" style={{ color: THEME.textDim }}>Cancelar</button>
+                    className="w-full py-2.5 rounded-lg font-semibold text-sm" style={{ color: activeTheme.textDim }}>Cancelar</button>
                 </div>
               </div>
             </div>
@@ -1783,37 +1848,37 @@ export default function App() {
           <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4"
             style={{ background: "rgba(6,8,7,0.75)" }} onClick={() => setModalPartidoAbierto(false)}>
             <div className="w-full sm:max-w-sm rounded-t-2xl sm:rounded-2xl p-5"
-              style={{ background: THEME.surface, border: `1px solid ${THEME.border}` }}
+              style={{ background: activeTheme.surface, border: `1px solid ${activeTheme.border}` }}
               onClick={(e) => e.stopPropagation()}>
-              <div className="text-[11px] f-mono mb-3 uppercase tracking-wide" style={{ color: THEME.textDim }}>Agregar juego</div>
+              <div className="text-[11px] f-mono mb-3 uppercase tracking-wide" style={{ color: activeTheme.textDim }}>Agregar juego</div>
 
               <button onClick={() => setEsBye((v) => !v)}
                 className="w-full flex items-center justify-between mb-3 rounded-md px-3 py-2.5"
-                style={{ background: THEME.surface2, border: `1px solid ${THEME.border}` }}>
-                <span className="text-sm font-medium" style={{ color: THEME.text }}>Descanso (BYE)</span>
-                <span className="w-11 h-6 rounded-full relative shrink-0" style={{ background: esBye ? THEME.offense : THEME.border }}>
-                  <span className="absolute top-0.5 w-5 h-5 rounded-full" style={{ background: THEME.text, left: esBye ? "22px" : "2px", transition: "left 0.15s" }} />
+                style={{ background: activeTheme.surface2, border: `1px solid ${activeTheme.border}` }}>
+                <span className="text-sm font-medium" style={{ color: activeTheme.text }}>Descanso (BYE)</span>
+                <span className="w-11 h-6 rounded-full relative shrink-0" style={{ background: esBye ? activeTheme.offense : activeTheme.border }}>
+                  <span className="absolute top-0.5 w-5 h-5 rounded-full" style={{ background: activeTheme.text, left: esBye ? "22px" : "2px", transition: "left 0.15s" }} />
                 </span>
               </button>
 
               <div className="flex flex-col gap-3 mb-4">
                 <div className="flex gap-2">
                   <div className="w-24">
-                    <div className="text-[10px] f-mono uppercase mb-1" style={{ color: THEME.textDim, opacity: 0.65 }}>Jornada</div>
+                    <div className="text-[10px] f-mono uppercase mb-1" style={{ color: activeTheme.textDim, opacity: 0.65 }}>Jornada</div>
                     <select value={jornadaPartido} onChange={(e) => setJornadaPartido(e.target.value)}
                       className="w-full rounded-md px-2 py-2 text-sm outline-none f-mono text-center" style={inputStyle}>
                       {opcionesJornada.map((n) => <option key={n} value={n}>{n}</option>)}
                     </select>
                   </div>
                   <div className="flex-1">
-                    <div className="text-[10px] f-mono uppercase mb-1" style={{ color: THEME.textDim, opacity: 0.65 }}>Fecha</div>
+                    <div className="text-[10px] f-mono uppercase mb-1" style={{ color: activeTheme.textDim, opacity: 0.65 }}>Fecha</div>
                     <input type="date" value={fechaPartido} onChange={(e) => setFechaPartido(e.target.value)}
                       className="w-full rounded-md px-3 py-2 text-sm outline-none" style={inputStyle} />
                   </div>
                 </div>
 
                 <div>
-                  <div className="text-[10px] f-mono uppercase mb-1" style={{ color: THEME.textDim, opacity: 0.65 }}>Equipo local</div>
+                  <div className="text-[10px] f-mono uppercase mb-1" style={{ color: activeTheme.textDim, opacity: 0.65 }}>Equipo local</div>
                   <select value={localCalendario} onChange={(e) => onCambiarLocalCalendario(e.target.value)}
                     className="w-full rounded-md px-3 py-2 text-sm outline-none" style={inputStyle}>
                     {listaEquipos.map((t) => <option key={t.id} value={t.nombre}>{t.nombre}</option>)}
@@ -1822,7 +1887,7 @@ export default function App() {
 
                 {!esBye && (
                   <div>
-                    <div className="text-[10px] f-mono uppercase mb-1" style={{ color: THEME.textDim, opacity: 0.65 }}>Equipo visitante</div>
+                    <div className="text-[10px] f-mono uppercase mb-1" style={{ color: activeTheme.textDim, opacity: 0.65 }}>Equipo visitante</div>
                     <select value={visitanteCalendario} onChange={(e) => setVisitanteCalendario(e.target.value)}
                       className="w-full rounded-md px-3 py-2 text-sm outline-none" style={inputStyle}>
                       <option value="">Selecciona rival</option>
@@ -1833,14 +1898,14 @@ export default function App() {
 
                 {!esBye && (
                   <div>
-                    <div className="text-[10px] f-mono uppercase mb-1" style={{ color: THEME.textDim, opacity: 0.65 }}>Hora</div>
+                    <div className="text-[10px] f-mono uppercase mb-1" style={{ color: activeTheme.textDim, opacity: 0.65 }}>Hora</div>
                     <input type="time" value={horaPartido} onChange={(e) => setHoraPartido(e.target.value)}
                       className="w-full rounded-md px-3 py-2 text-sm outline-none" style={inputStyle} />
                   </div>
                 )}
                 {!esBye && (
                   <div>
-                    <div className="text-[10px] f-mono uppercase mb-1" style={{ color: THEME.textDim, opacity: 0.65 }}>Lugar (se llena solo con el del equipo local)</div>
+                    <div className="text-[10px] f-mono uppercase mb-1" style={{ color: activeTheme.textDim, opacity: 0.65 }}>Lugar (se llena solo con el del equipo local)</div>
                     <input value={lugarPartido} onChange={(e) => setLugarPartido(e.target.value)}
                       className="w-full rounded-md px-3 py-2 text-sm outline-none" style={inputStyle} />
                   </div>
@@ -1848,17 +1913,17 @@ export default function App() {
               </div>
 
               {equipos.length === 0 && (
-                <div className="text-[11px] mb-3" style={{ color: THEME.textDim }}>
+                <div className="text-[11px] mb-3" style={{ color: activeTheme.textDim }}>
                   Aún no has agregado equipos rivales — hazlo desde la pestaña Liga para poder elegirlos aquí.
                 </div>
               )}
-              {errorPartido && <div className="text-xs mb-3" style={{ color: THEME.danger }}>{errorPartido}</div>}
+              {errorPartido && <div className="text-xs mb-3" style={{ color: activeTheme.danger }}>{errorPartido}</div>}
 
               <div className="flex gap-2">
                 <button onClick={() => setModalPartidoAbierto(false)} className="flex-1 py-3 rounded-lg font-semibold text-sm"
-                  style={{ background: THEME.surface2, color: THEME.text, border: `1px solid ${THEME.border}` }}>Cancelar</button>
+                  style={{ background: activeTheme.surface2, color: activeTheme.text, border: `1px solid ${activeTheme.border}` }}>Cancelar</button>
                 <button onClick={agregarPartidoCalendario} className="flex-1 py-3 rounded-lg font-semibold text-sm"
-                  style={{ background: THEME.text, color: THEME.bg }}>Agregar</button>
+                  style={{ background: activeTheme.text, color: activeTheme.bg }}>Agregar</button>
               </div>
             </div>
           </div>
@@ -1869,23 +1934,23 @@ export default function App() {
           <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4"
             style={{ background: "rgba(6,8,7,0.75)" }} onClick={cerrarEditarPartido}>
             <div className="w-full sm:max-w-sm rounded-t-2xl sm:rounded-2xl p-5 max-h-[90vh] overflow-y-auto"
-              style={{ background: THEME.surface, border: `1px solid ${THEME.border}` }}
+              style={{ background: activeTheme.surface, border: `1px solid ${activeTheme.border}` }}
               onClick={(e) => e.stopPropagation()}>
-              <div className="text-[11px] f-mono mb-3 uppercase tracking-wide" style={{ color: THEME.textDim }}>Editar encuentro</div>
+              <div className="text-[11px] f-mono mb-3 uppercase tracking-wide" style={{ color: activeTheme.textDim }}>Editar encuentro</div>
 
               <button onClick={() => setModalEditarPartido((m) => ({ ...m, bye: !m.bye }))}
                 className="w-full flex items-center justify-between mb-3 rounded-md px-3 py-2.5"
-                style={{ background: THEME.surface2, border: `1px solid ${THEME.border}` }}>
-                <span className="text-sm font-medium" style={{ color: THEME.text }}>Descanso (BYE)</span>
-                <span className="w-11 h-6 rounded-full relative shrink-0" style={{ background: modalEditarPartido.bye ? THEME.offense : THEME.border }}>
-                  <span className="absolute top-0.5 w-5 h-5 rounded-full" style={{ background: THEME.text, left: modalEditarPartido.bye ? "22px" : "2px", transition: "left 0.15s" }} />
+                style={{ background: activeTheme.surface2, border: `1px solid ${activeTheme.border}` }}>
+                <span className="text-sm font-medium" style={{ color: activeTheme.text }}>Descanso (BYE)</span>
+                <span className="w-11 h-6 rounded-full relative shrink-0" style={{ background: modalEditarPartido.bye ? activeTheme.offense : activeTheme.border }}>
+                  <span className="absolute top-0.5 w-5 h-5 rounded-full" style={{ background: activeTheme.text, left: modalEditarPartido.bye ? "22px" : "2px", transition: "left 0.15s" }} />
                 </span>
               </button>
 
               <div className="flex flex-col gap-3 mb-4">
                 <div className="flex gap-2">
                   <div className="w-24">
-                    <div className="text-[10px] f-mono uppercase mb-1" style={{ color: THEME.textDim, opacity: 0.65 }}>Jornada</div>
+                    <div className="text-[10px] f-mono uppercase mb-1" style={{ color: activeTheme.textDim, opacity: 0.65 }}>Jornada</div>
                     <select value={modalEditarPartido.jornada}
                       onChange={(e) => setModalEditarPartido((m) => ({ ...m, jornada: e.target.value }))}
                       className="w-full rounded-md px-2 py-2 text-sm outline-none f-mono text-center" style={inputStyle}>
@@ -1894,7 +1959,7 @@ export default function App() {
                     </select>
                   </div>
                   <div className="flex-1">
-                    <div className="text-[10px] f-mono uppercase mb-1" style={{ color: THEME.textDim, opacity: 0.65 }}>Fecha</div>
+                    <div className="text-[10px] f-mono uppercase mb-1" style={{ color: activeTheme.textDim, opacity: 0.65 }}>Fecha</div>
                     <input type="date" value={modalEditarPartido.fecha}
                       onChange={(e) => setModalEditarPartido((m) => ({ ...m, fecha: e.target.value }))}
                       className="w-full rounded-md px-3 py-2 text-sm outline-none" style={inputStyle} />
@@ -1902,7 +1967,7 @@ export default function App() {
                 </div>
 
                 <div>
-                  <div className="text-[10px] f-mono uppercase mb-1" style={{ color: THEME.textDim, opacity: 0.65 }}>Equipo local</div>
+                  <div className="text-[10px] f-mono uppercase mb-1" style={{ color: activeTheme.textDim, opacity: 0.65 }}>Equipo local</div>
                   <select value={modalEditarPartido.local} onChange={(e) => onCambiarLocalEdicion(e.target.value)}
                     className="w-full rounded-md px-3 py-2 text-sm outline-none" style={inputStyle}>
                     {listaEquipos.map((t) => <option key={t.id} value={t.nombre}>{t.nombre}</option>)}
@@ -1911,7 +1976,7 @@ export default function App() {
 
                 {!modalEditarPartido.bye && (
                   <div>
-                    <div className="text-[10px] f-mono uppercase mb-1" style={{ color: THEME.textDim, opacity: 0.65 }}>Equipo visitante</div>
+                    <div className="text-[10px] f-mono uppercase mb-1" style={{ color: activeTheme.textDim, opacity: 0.65 }}>Equipo visitante</div>
                     <select value={modalEditarPartido.visitante} onChange={(e) => setModalEditarPartido((m) => ({ ...m, visitante: e.target.value }))}
                       className="w-full rounded-md px-3 py-2 text-sm outline-none" style={inputStyle}>
                       <option value="">Selecciona rival</option>
@@ -1922,7 +1987,7 @@ export default function App() {
 
                 {!modalEditarPartido.bye && (
                   <div>
-                    <div className="text-[10px] f-mono uppercase mb-1" style={{ color: THEME.textDim, opacity: 0.65 }}>Hora</div>
+                    <div className="text-[10px] f-mono uppercase mb-1" style={{ color: activeTheme.textDim, opacity: 0.65 }}>Hora</div>
                     <input type="time" value={modalEditarPartido.hora}
                       onChange={(e) => setModalEditarPartido((m) => ({ ...m, hora: e.target.value }))}
                       className="w-full rounded-md px-3 py-2 text-sm outline-none" style={inputStyle} />
@@ -1930,7 +1995,7 @@ export default function App() {
                 )}
                 {!modalEditarPartido.bye && (
                   <div>
-                    <div className="text-[10px] f-mono uppercase mb-1" style={{ color: THEME.textDim, opacity: 0.65 }}>Lugar</div>
+                    <div className="text-[10px] f-mono uppercase mb-1" style={{ color: activeTheme.textDim, opacity: 0.65 }}>Lugar</div>
                     <input value={modalEditarPartido.lugar}
                       onChange={(e) => setModalEditarPartido((m) => ({ ...m, lugar: e.target.value }))}
                       className="w-full rounded-md px-3 py-2 text-sm outline-none" style={inputStyle} />
@@ -1940,14 +2005,14 @@ export default function App() {
                 {!modalEditarPartido.bye && sesion.tipo === "creador" && (
                   <div className="flex items-center gap-2 mt-1">
                     <div className="flex-1">
-                      <div className="text-[10px] f-mono uppercase mb-1 truncate" style={{ color: THEME.textDim }}>{modalEditarPartido.local || "Local"}</div>
+                      <div className="text-[10px] f-mono uppercase mb-1 truncate" style={{ color: activeTheme.textDim }}>{modalEditarPartido.local || "Local"}</div>
                       <input value={modalEditarPartido.marcadorLocal}
                         onChange={(e) => setModalEditarPartido((m) => ({ ...m, marcadorLocal: e.target.value.replace(/[^0-9]/g, "") }))}
                         className="w-full rounded-md px-2 py-2 text-sm outline-none f-mono text-center" style={inputStyle} />
                     </div>
-                    <span className="f-mono text-sm mt-4" style={{ color: THEME.textDim }}>–</span>
+                    <span className="f-mono text-sm mt-4" style={{ color: activeTheme.textDim }}>–</span>
                     <div className="flex-1">
-                      <div className="text-[10px] f-mono uppercase mb-1 truncate" style={{ color: THEME.textDim }}>{modalEditarPartido.visitante || "Visitante"}</div>
+                      <div className="text-[10px] f-mono uppercase mb-1 truncate" style={{ color: activeTheme.textDim }}>{modalEditarPartido.visitante || "Visitante"}</div>
                       <input value={modalEditarPartido.marcadorVisitante}
                         onChange={(e) => setModalEditarPartido((m) => ({ ...m, marcadorVisitante: e.target.value.replace(/[^0-9]/g, "") }))}
                         className="w-full rounded-md px-2 py-2 text-sm outline-none f-mono text-center" style={inputStyle} />
@@ -1955,28 +2020,28 @@ export default function App() {
                   </div>
                 )}
                 {!modalEditarPartido.bye && sesion.tipo !== "creador" && (
-                  <div className="rounded-md px-3 py-2.5" style={{ background: THEME.surface2, border: `1px solid ${THEME.border}` }}>
-                    <div className="text-[10px] f-mono uppercase mb-1" style={{ color: THEME.textDim }}>Marcador</div>
-                    <div className="text-sm" style={{ color: THEME.text }}>
+                  <div className="rounded-md px-3 py-2.5" style={{ background: activeTheme.surface2, border: `1px solid ${activeTheme.border}` }}>
+                    <div className="text-[10px] f-mono uppercase mb-1" style={{ color: activeTheme.textDim }}>Marcador</div>
+                    <div className="text-sm" style={{ color: activeTheme.text }}>
                       {modalEditarPartido.marcadorLocal !== "" && modalEditarPartido.marcadorVisitante !== ""
                         ? `${modalEditarPartido.marcadorLocal} – ${modalEditarPartido.marcadorVisitante}`
                         : "Sin capturar"}
                     </div>
-                    <div className="text-[11px] mt-1" style={{ color: THEME.textDim }}>Solo el organizador puede capturar o cambiar el marcador.</div>
+                    <div className="text-[11px] mt-1" style={{ color: activeTheme.textDim }}>Solo el organizador puede capturar o cambiar el marcador.</div>
                   </div>
                 )}
               </div>
 
-              {errorEditarPartido && <div className="text-xs mb-3" style={{ color: THEME.danger }}>{errorEditarPartido}</div>}
+              {errorEditarPartido && <div className="text-xs mb-3" style={{ color: activeTheme.danger }}>{errorEditarPartido}</div>}
 
               <div className="flex gap-2 mb-2">
                 <button onClick={cerrarEditarPartido} className="flex-1 py-3 rounded-lg font-semibold text-sm"
-                  style={{ background: THEME.surface2, color: THEME.text, border: `1px solid ${THEME.border}` }}>Cancelar</button>
+                  style={{ background: activeTheme.surface2, color: activeTheme.text, border: `1px solid ${activeTheme.border}` }}>Cancelar</button>
                 <button onClick={guardarEdicionPartido} className="flex-1 py-3 rounded-lg font-semibold text-sm"
-                  style={{ background: THEME.text, color: THEME.bg }}>Guardar</button>
+                  style={{ background: activeTheme.text, color: activeTheme.bg }}>Guardar</button>
               </div>
               <button onClick={eliminarDesdeModal} className="w-full py-2.5 rounded-lg font-semibold text-sm"
-                style={{ color: THEME.danger }}>Eliminar encuentro</button>
+                style={{ color: activeTheme.danger }}>Eliminar encuentro</button>
             </div>
           </div>
         )}
@@ -1986,21 +2051,21 @@ export default function App() {
           <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4"
             style={{ background: "rgba(6,8,7,0.75)" }} onClick={cerrarModalEquipo}>
             <div className="w-full sm:max-w-sm rounded-t-2xl sm:rounded-2xl p-5"
-              style={{ background: THEME.surface, border: `1px solid ${THEME.border}` }}
+              style={{ background: activeTheme.surface, border: `1px solid ${activeTheme.border}` }}
               onClick={(e) => e.stopPropagation()}>
-              <div className="text-[11px] f-mono mb-3 uppercase tracking-wide" style={{ color: THEME.textDim }}>
+              <div className="text-[11px] f-mono mb-3 uppercase tracking-wide" style={{ color: activeTheme.textDim }}>
                 {modalEquipo.modo === "nuevo" ? "Agregar equipo" : "Editar equipo"}
               </div>
               <input type="file" accept="image/*" ref={inputFotoModalEquipo} className="hidden" onChange={onFotoModalEquipoChange} />
               <div className="flex justify-center mb-4">
                 <button onClick={() => inputFotoModalEquipo.current?.click()}
                   className="w-20 h-20 rounded-full flex items-center justify-center overflow-hidden"
-                  style={{ background: THEME.surface2, border: `1px dashed ${THEME.border}` }}>
+                  style={{ background: activeTheme.surface2, border: `1px dashed ${activeTheme.border}` }}>
                   {modalEquipo.foto ? <img src={modalEquipo.foto} alt="" className="w-full h-full object-cover" />
-                    : <span className="text-xs" style={{ color: THEME.textDim }}>Logo del equipo</span>}
+                    : <span className="text-xs" style={{ color: activeTheme.textDim }}>Logo del equipo</span>}
                 </button>
               </div>
-              {errorFoto && <div className="text-xs mb-3 text-center" style={{ color: THEME.danger }}>{errorFoto}</div>}
+              {errorFoto && <div className="text-xs mb-3 text-center" style={{ color: activeTheme.danger }}>{errorFoto}</div>}
               <div className="flex flex-col gap-2 mb-4">
                 <input placeholder="Nombre del equipo" value={modalEquipo.nombre}
                   onChange={(e) => setModalEquipo((m) => ({ ...m, nombre: e.target.value }))}
@@ -2010,26 +2075,26 @@ export default function App() {
                   className="rounded-md px-3 py-2 text-sm outline-none" style={inputStyle} />
               </div>
               {modalEquipo.modo === "editar" && (
-                <div className="text-[11px] mb-4" style={{ color: THEME.textDim }}>
+                <div className="text-[11px] mb-4" style={{ color: activeTheme.textDim }}>
                   Si cambias el nombre, se actualiza en todos los juegos del calendario donde aparece.
                 </div>
               )}
               {modalEquipo.modo === "editar" && modalEquipo.pin && (
-                <div className="flex items-center justify-between mb-4 rounded-md px-3 py-2.5" style={{ background: THEME.surface2, border: `1px solid ${THEME.border}` }}>
+                <div className="flex items-center justify-between mb-4 rounded-md px-3 py-2.5" style={{ background: activeTheme.surface2, border: `1px solid ${activeTheme.border}` }}>
                   <div>
-                    <div className="text-[10px] f-mono uppercase" style={{ color: THEME.textDim }}>PIN del equipo</div>
-                    <div className="f-mono text-lg font-bold tracking-widest" style={{ color: THEME.text }}>{modalEquipo.pin}</div>
+                    <div className="text-[10px] f-mono uppercase" style={{ color: activeTheme.textDim }}>PIN del equipo</div>
+                    <div className="f-mono text-lg font-bold tracking-widest" style={{ color: activeTheme.text }}>{modalEquipo.pin}</div>
                   </div>
                   {sesion.tipo === "creador" && (
-                    <button onClick={regenerarPinModal} className="text-xs px-3 py-1.5 rounded font-medium" style={{ background: THEME.surface, color: THEME.text }}>Regenerar</button>
+                    <button onClick={regenerarPinModal} className="text-xs px-3 py-1.5 rounded font-medium" style={{ background: activeTheme.surface, color: activeTheme.text }}>Regenerar</button>
                   )}
                 </div>
               )}
               <div className="flex gap-2">
                 <button onClick={cerrarModalEquipo} className="flex-1 py-3 rounded-lg font-semibold text-sm"
-                  style={{ background: THEME.surface2, color: THEME.text, border: `1px solid ${THEME.border}` }}>Cancelar</button>
+                  style={{ background: activeTheme.surface2, color: activeTheme.text, border: `1px solid ${activeTheme.border}` }}>Cancelar</button>
                 <button onClick={guardarModalEquipo} className="flex-1 py-3 rounded-lg font-semibold text-sm"
-                  style={{ background: THEME.text, color: THEME.bg }}>Guardar</button>
+                  style={{ background: activeTheme.text, color: activeTheme.bg }}>Guardar</button>
               </div>
             </div>
           </div>
