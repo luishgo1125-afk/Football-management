@@ -1601,19 +1601,31 @@ export default function App() {
             {partidosPorJornada.map((grupo) => {
               const abierta = !!jornadasAbiertas[grupo.jornada];
               return (
-                <div key={grupo.jornada} className="mb-2">
+                <div key={grupo.jornada} className="mb-3">
                   <button onClick={() => toggleJornada(grupo.jornada)}
-                    className="w-full flex items-center gap-3 my-4 select-none">
-                    <div className="flex-1 h-px" style={{ background: THEME.border }} />
-                    <span className="flex items-center gap-1.5 text-[11px] f-mono uppercase tracking-wide shrink-0" style={{ color: THEME.textDim }}>
-                      <span style={{ display: "inline-block", transform: abierta ? "rotate(90deg)" : "rotate(0deg)", transition: "transform 0.15s" }}>▸</span>
-                      {grupo.jornada === "Sin jornada" ? "Sin jornada" : `Jornada ${grupo.jornada}`} · {grupo.items.length} juego{grupo.items.length !== 1 ? "s" : ""}
+                    className="w-full flex items-center justify-between gap-2 px-4 py-3.5 rounded-xl text-left select-none"
+                    style={{
+                      background: abierta ? THEME.surface2 : THEME.surface,
+                      border: `1px solid ${abierta ? THEME.offense + "55" : THEME.border}`,
+                    }}>
+                    <span className="f-mono text-sm font-bold uppercase tracking-wide" style={{ color: THEME.text }}>
+                      {grupo.jornada === "Sin jornada" ? "Sin jornada" : `Jornada ${grupo.jornada}`}
                     </span>
-                    <div className="flex-1 h-px" style={{ background: THEME.border }} />
+                    <span className="flex items-center gap-2 shrink-0">
+                      <span className="text-[11px] f-mono uppercase" style={{ color: THEME.textDim }}>
+                        {grupo.items.length} juego{grupo.items.length !== 1 ? "s" : ""}
+                      </span>
+                      <span style={{
+                        display: "inline-block",
+                        transform: abierta ? "rotate(90deg)" : "rotate(0deg)",
+                        transition: "transform 0.15s",
+                        color: abierta ? THEME.offense : THEME.textDim,
+                      }}>▸</span>
+                    </span>
                   </button>
 
                   {abierta && (
-                    <div className="flex flex-col gap-3">
+                    <div className="flex flex-col gap-3 mt-3">
                       {grupo.items.map((p) => {
                         const r = resultadoPartido(p);
                         const tieneMarcador = p.marcadorLocal !== null && p.marcadorLocal !== undefined && p.marcadorVisitante !== null && p.marcadorVisitante !== undefined;
