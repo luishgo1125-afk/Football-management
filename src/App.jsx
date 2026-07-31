@@ -433,6 +433,8 @@ export default function App() {
   const [modalEditarPartido, setModalEditarPartido] = useState(null);
   const [errorEditarPartido, setErrorEditarPartido] = useState("");
   const [menuPartidoAbierto, setMenuPartidoAbierto] = useState(null);
+  const [jornadasAbiertas, setJornadasAbiertas] = useState({});
+  const toggleJornada = (j) => setJornadasAbiertas((prev) => ({ ...prev, [j]: !prev[j] }));
   const pulsacionLargaRef = useRef(null);
   const iniciarPulsacionLarga = (id) => {
     if (!sesion || sesion.tipo !== "creador") return;
@@ -1578,7 +1580,7 @@ export default function App() {
           </div>
         )}
 
-        {/* ============ TAB CALENDARIO (único, agrupado por jornada) ============ */}
+        {/* ============ TAB CALENDARIO (único, agrupado por jornada, colapsable) ============ */}
         {tab === "calendario" && (
           <div>
             <div className="flex items-center justify-between mb-4">
@@ -1596,97 +1598,104 @@ export default function App() {
               </div>
             )}
 
-            {partidosPorJornada.map((grupo) => (
-              <div key={grupo.jornada} className="mb-2">
-                <div className="flex items-center gap-3 my-4">
-                  <div className="flex-1 h-px" style={{ background: THEME.border }} />
-                  <span className="text-[11px] f-mono uppercase tracking-wide shrink-0" style={{ color: THEME.textDim }}>
-                    {grupo.jornada === "Sin jornada" ? "Sin jornada" : `Jornada ${grupo.jornada}`} · {grupo.items.length} juego{grupo.items.length !== 1 ? "s" : ""}
-                  </span>
-                  <div className="flex-1 h-px" style={{ background: THEME.border }} />
-                </div>
+            {partidosPorJornada.map((grupo) => {
+              const abierta = !!jornadasAbiertas[grupo.jornada];
+              return (
+                <div key={grupo.jornada} className="mb-2">
+                  <button onClick={() => toggleJornada(grupo.jornada)}
+                    className="w-full flex items-center gap-3 my-4 select-none">
+                    <div className="flex-1 h-px" style={{ background: THEME.border }} />
+                    <span className="flex items-center gap-1.5 text-[11px] f-mono uppercase tracking-wide shrink-0" style={{ color: THEME.textDim }}>
+                      <span style={{ display: "inline-block", transform: abierta ? "rotate(90deg)" : "rotate(0deg)", transition: "transform 0.15s" }}>▸</span>
+                      {grupo.jornada === "Sin jornada" ? "Sin jornada" : `Jornada ${grupo.jornada}`} · {grupo.items.length} juego{grupo.items.length !== 1 ? "s" : ""}
+                    </span>
+                    <div className="flex-1 h-px" style={{ background: THEME.border }} />
+                  </button>
 
-                <div className="flex flex-col gap-3">
-                  {grupo.items.map((p) => {
-                    const r = resultadoPartido(p);
-                    const tieneMarcador = p.marcadorLocal !== null && p.marcadorLocal !== undefined && p.marcadorVisitante !== null && p.marcadorVisitante !== undefined;
+                  {abierta && (
+                    <div className="flex flex-col gap-3">
+                      {grupo.items.map((p) => {
+                        const r = resultadoPartido(p);
+                        const tieneMarcador = p.marcadorLocal !== null && p.marcadorLocal !== undefined && p.marcadorVisitante !== null && p.marcadorVisitante !== undefined;
 
-                    const renderLogo = (nombreEquipo) => {
-                      const foto = fotoDeEquipo(nombreEquipo);
-                      return (
-                        <div className="flex flex-col items-center gap-1.5 w-20 shrink-0">
-                          <div className="w-16 h-16 rounded-full overflow-hidden flex items-center justify-center"
-                            style={{ background: THEME.surface2, border: `1px solid ${THEME.border}` }}>
-                            {foto ? <img src={foto} alt="" className="w-full h-full object-cover" />
-                              : <span className="text-[10px] f-mono font-bold text-center px-1" style={{ color: THEME.textDim }}>{nombreEquipo}</span>}
-                          </div>
-                          <div className="text-xs font-semibold text-center truncate w-full" style={{ color: nombreEquipo === equipo ? THEME.offense : THEME.text }}>{nombreEquipo}</div>
-                          <div className="text-[11px] f-mono" style={{ color: THEME.textDim }}>{registroDeEquipo(nombreEquipo)}</div>
-                        </div>
-                      );
-                    };
-
-                    if (p.bye) {
-                      return (
-                        <div key={p.id} className="rounded-xl p-5 select-none"
-                          style={{ background: THEME.surface, border: `1px solid ${THEME.border}` }}
-                          onMouseDown={() => iniciarPulsacionLarga(p.id)} onMouseUp={cancelarPulsacionLarga} onMouseLeave={cancelarPulsacionLarga}
-                          onTouchStart={() => iniciarPulsacionLarga(p.id)} onTouchEnd={cancelarPulsacionLarga} onTouchCancel={cancelarPulsacionLarga}>
-                          <div className="flex items-center justify-between gap-1">
-                            {renderLogo(p.local)}
-
-                            <div className="flex-1 flex flex-col items-center gap-1.5 min-w-0 px-2">
-                              <div className="text-xs f-mono text-center" style={{ color: THEME.textDim }}>{formatearFecha(p.fecha)}</div>
-                              <div className="f-mono text-2xl font-bold text-center mt-1" style={{ color: THEME.textDim }}>BYE</div>
-                              <span className="text-[11px] px-2 py-1 rounded font-bold f-mono uppercase mt-0.5"
-                                style={{ background: THEME.surface2, color: THEME.textDim, border: `1px solid ${THEME.border}` }}>Descanso</span>
-                            </div>
-
+                        const renderLogo = (nombreEquipo) => {
+                          const foto = fotoDeEquipo(nombreEquipo);
+                          return (
                             <div className="flex flex-col items-center gap-1.5 w-20 shrink-0">
-                              <div className="w-16 h-16 rounded-full flex items-center justify-center"
-                                style={{ background: THEME.surface2, border: `1px dashed ${THEME.border}` }}>
-                                <span className="text-sm f-mono font-bold" style={{ color: THEME.textDim }}>BYE</span>
+                              <div className="w-16 h-16 rounded-full overflow-hidden flex items-center justify-center"
+                                style={{ background: THEME.surface2, border: `1px solid ${THEME.border}` }}>
+                                {foto ? <img src={foto} alt="" className="w-full h-full object-cover" />
+                                  : <span className="text-[10px] f-mono font-bold text-center px-1" style={{ color: THEME.textDim }}>{nombreEquipo}</span>}
                               </div>
-                              <div className="text-xs font-semibold text-center" style={{ color: THEME.textDim }}>Sin rival</div>
+                              <div className="text-xs font-semibold text-center truncate w-full" style={{ color: nombreEquipo === equipo ? THEME.offense : THEME.text }}>{nombreEquipo}</div>
+                              <div className="text-[11px] f-mono" style={{ color: THEME.textDim }}>{registroDeEquipo(nombreEquipo)}</div>
                             </div>
-                          </div>
-                        </div>
-                      );
-                    }
+                          );
+                        };
 
-                    return (
-                      <div key={p.id} className="rounded-xl p-5 select-none"
-                        style={{ background: THEME.surface, border: `1px solid ${THEME.border}` }}
-                        onMouseDown={() => iniciarPulsacionLarga(p.id)} onMouseUp={cancelarPulsacionLarga} onMouseLeave={cancelarPulsacionLarga}
-                        onTouchStart={() => iniciarPulsacionLarga(p.id)} onTouchEnd={cancelarPulsacionLarga} onTouchCancel={cancelarPulsacionLarga}>
-                        <div className="flex items-center justify-between gap-1">
-                          {renderLogo(p.local)}
-                          <div className="f-mono text-3xl font-bold text-center px-1 shrink-0" style={{ color: tieneMarcador ? THEME.text : THEME.textDim }}>
-                            {tieneMarcador ? p.marcadorLocal : "–"}
-                          </div>
+                        if (p.bye) {
+                          return (
+                            <div key={p.id} className="rounded-xl p-5 select-none"
+                              style={{ background: THEME.surface, border: `1px solid ${THEME.border}` }}
+                              onMouseDown={() => iniciarPulsacionLarga(p.id)} onMouseUp={cancelarPulsacionLarga} onMouseLeave={cancelarPulsacionLarga}
+                              onTouchStart={() => iniciarPulsacionLarga(p.id)} onTouchEnd={cancelarPulsacionLarga} onTouchCancel={cancelarPulsacionLarga}>
+                              <div className="flex items-center justify-between gap-1">
+                                {renderLogo(p.local)}
 
-                          <div className="flex flex-col items-center gap-1.5 min-w-0 px-2">
-                            <div className="text-xs f-mono text-center" style={{ color: THEME.textDim }}>{formatearFecha(p.fecha)}</div>
-                            {p.hora && <div className="text-xs f-mono text-center" style={{ color: THEME.textDim }}>{formatearHora(p.hora)}</div>}
-                            {r && (
-                              <span className="text-[11px] px-2 py-1 rounded font-bold f-mono uppercase mt-0.5"
-                                style={{ background: colorResultado(r), color: "#0A0D0C" }}>{textoResultado(r)}</span>
-                            )}
-                          </div>
+                                <div className="flex-1 flex flex-col items-center gap-1.5 min-w-0 px-2">
+                                  <div className="text-xs f-mono text-center" style={{ color: THEME.textDim }}>{formatearFecha(p.fecha)}</div>
+                                  <div className="f-mono text-2xl font-bold text-center mt-1" style={{ color: THEME.textDim }}>BYE</div>
+                                  <span className="text-[11px] px-2 py-1 rounded font-bold f-mono uppercase mt-0.5"
+                                    style={{ background: THEME.surface2, color: THEME.textDim, border: `1px solid ${THEME.border}` }}>Descanso</span>
+                                </div>
 
-                          <div className="f-mono text-3xl font-bold text-center px-1 shrink-0" style={{ color: tieneMarcador ? THEME.text : THEME.textDim }}>
-                            {tieneMarcador ? p.marcadorVisitante : "–"}
-                          </div>
-                          {renderLogo(p.visitante)}
-                        </div>
+                                <div className="flex flex-col items-center gap-1.5 w-20 shrink-0">
+                                  <div className="w-16 h-16 rounded-full flex items-center justify-center"
+                                    style={{ background: THEME.surface2, border: `1px dashed ${THEME.border}` }}>
+                                    <span className="text-sm f-mono font-bold" style={{ color: THEME.textDim }}>BYE</span>
+                                  </div>
+                                  <div className="text-xs font-semibold text-center" style={{ color: THEME.textDim }}>Sin rival</div>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        }
 
-                        {p.lugar && <div className="text-xs text-center mt-4" style={{ color: THEME.textDim }}>📍 {p.lugar}</div>}
-                      </div>
-                    );
-                  })}
+                        return (
+                          <div key={p.id} className="rounded-xl p-5 select-none"
+                            style={{ background: THEME.surface, border: `1px solid ${THEME.border}` }}
+                            onMouseDown={() => iniciarPulsacionLarga(p.id)} onMouseUp={cancelarPulsacionLarga} onMouseLeave={cancelarPulsacionLarga}
+                            onTouchStart={() => iniciarPulsacionLarga(p.id)} onTouchEnd={cancelarPulsacionLarga} onTouchCancel={cancelarPulsacionLarga}>
+                            <div className="flex items-center justify-between gap-1">
+                              {renderLogo(p.local)}
+                              <div className="f-mono text-3xl font-bold text-center px-1 shrink-0" style={{ color: tieneMarcador ? THEME.text : THEME.textDim }}>
+                                {tieneMarcador ? p.marcadorLocal : "–"}
+                              </div>
+
+                              <div className="flex flex-col items-center gap-1.5 min-w-0 px-2">
+                                <div className="text-xs f-mono text-center" style={{ color: THEME.textDim }}>{formatearFecha(p.fecha)}</div>
+                                {p.hora && <div className="text-xs f-mono text-center" style={{ color: THEME.textDim }}>{formatearHora(p.hora)}</div>}
+                                {r && (
+                                  <span className="text-[11px] px-2 py-1 rounded font-bold f-mono uppercase mt-0.5"
+                                    style={{ background: colorResultado(r), color: "#0A0D0C" }}>{textoResultado(r)}</span>
+                                )}
+                              </div>
+
+                              <div className="f-mono text-3xl font-bold text-center px-1 shrink-0" style={{ color: tieneMarcador ? THEME.text : THEME.textDim }}>
+                                {tieneMarcador ? p.marcadorVisitante : "–"}
+                              </div>
+                              {renderLogo(p.visitante)}
+                            </div>
+
+                            {p.lugar && <div className="text-xs text-center mt-4" style={{ color: THEME.textDim }}>📍 {p.lugar}</div>}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
 
