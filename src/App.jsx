@@ -1332,10 +1332,10 @@ export default function App() {
             <>
               <input type="file" accept="image/*" ref={inputFotoEquipo} className="hidden" onChange={onFotoEquipoChange} />
               <button onClick={() => inputFotoEquipo.current?.click()}
-                className="w-12 h-12 rounded-full flex items-center justify-center shrink-0 overflow-hidden"
+                className="w-16 h-16 rounded-full flex items-center justify-center shrink-0 overflow-hidden"
                 style={{ background: activeTheme.surface2, border: `1px dashed ${activeTheme.border}` }}>
                 {equipoFoto ? <img src={equipoFoto} alt="" className="w-full h-full object-cover" />
-                  : <span className="text-lg" style={{ color: activeTheme.textDim }}>+</span>}
+                  : <span className="text-xl" style={{ color: activeTheme.textDim }}>+</span>}
               </button>
             </>
           )}
@@ -1343,15 +1343,15 @@ export default function App() {
             <>
               <input type="file" accept="image/*" ref={inputFotoLiga} className="hidden" onChange={onFotoLigaChange} />
               <button onClick={() => inputFotoLiga.current?.click()}
-                className="w-12 h-12 rounded-full flex items-center justify-center shrink-0 overflow-hidden"
+                className="w-16 h-16 rounded-full flex items-center justify-center shrink-0 overflow-hidden"
                 style={{ background: activeTheme.surface2, border: `1px dashed ${activeTheme.border}` }}>
                 {ligaFoto ? <img src={ligaFoto} alt="" className="w-full h-full object-cover" />
-                  : <span className="text-lg" style={{ color: activeTheme.textDim }}>+</span>}
+                  : <span className="text-xl" style={{ color: activeTheme.textDim }}>+</span>}
               </button>
             </>
           )}
           {sesion.tipo === "visitante" && ligaFoto && (
-            <div className="w-12 h-12 rounded-full overflow-hidden shrink-0 flex items-center justify-center"
+            <div className="w-16 h-16 rounded-full overflow-hidden shrink-0 flex items-center justify-center"
               style={{ background: activeTheme.surface2, border: `1px solid ${activeTheme.border}` }}>
               <img src={ligaFoto} alt="" className="w-full h-full object-cover" />
             </div>
