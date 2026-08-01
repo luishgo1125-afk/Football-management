@@ -1267,6 +1267,8 @@ export default function App() {
       body, input, select, button { font-family:'Inter',sans-serif; }
       /* Evita el zoom automático de iOS/Android al enfocar campos (ocurre si el font-size es menor a 16px) */
       input, select, textarea { font-size: 16px !important; }
+      /* Excepción: el nombre del equipo/liga en el encabezado debe verse grande (text-3xl = 30px), no 16px */
+      .header-name-input { font-size: 30px !important; }
     `}</style>
   );
 
@@ -1452,11 +1454,11 @@ export default function App() {
           )}
           {sesion.tipo === "equipo" ? (
             <input value={equipo} onChange={(e) => actualizarMiEquipo({ nombre: e.target.value })}
-              className="f-display text-3xl bg-transparent outline-none w-full font-bold"
+              className="header-name-input f-display text-3xl bg-transparent outline-none w-full font-bold"
               style={{ color: activeTheme.text }} />
           ) : sesion.tipo === "creador" ? (
             <input value={ligaNombre} onChange={(e) => setLigaNombre(e.target.value)}
-              className="f-display text-3xl bg-transparent outline-none w-full font-bold"
+              className="header-name-input f-display text-3xl bg-transparent outline-none w-full font-bold"
               style={{ color: activeTheme.text }} />
           ) : (
             <div className="f-display text-3xl font-bold w-full truncate" style={{ color: activeTheme.text }}>{ligaNombre || "Visitante"}</div>
@@ -1634,26 +1636,28 @@ export default function App() {
 
         {/* ============ MODAL: AGREGAR JUGADOR ============ */}
         {modalJugadorAbierto && (
-          <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4"
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
             style={{ background: "rgba(6,8,7,0.75)" }} onClick={() => setModalJugadorAbierto(false)}>
-            <div className="w-full sm:max-w-sm rounded-t-2xl sm:rounded-2xl p-5"
+            <div className="w-full max-w-sm rounded-2xl p-5 overflow-hidden"
               style={{ background: activeTheme.surface, border: `1px solid ${activeTheme.border}` }}
               onClick={(e) => e.stopPropagation()}>
               <div className="text-[11px] f-mono mb-3 uppercase tracking-wide" style={{ color: activeTheme.textDim }}>Agregar jugador</div>
-              <div className="flex gap-3 mb-3 items-center">
-                <input type="file" accept="image/*" ref={inputFotoNueva} className="hidden" onChange={onFotoNuevaChange} />
+              <input type="file" accept="image/*" ref={inputFotoNueva} className="hidden" onChange={onFotoNuevaChange} />
+              <div className="flex justify-center mb-4">
                 <button onClick={() => inputFotoNueva.current?.click()}
-                  className="w-12 h-12 rounded-full flex items-center justify-center shrink-0 overflow-hidden"
+                  className="w-20 h-20 rounded-full flex items-center justify-center shrink-0 overflow-hidden"
                   style={{ background: activeTheme.surface2, border: `1px dashed ${activeTheme.border}` }}>
                   {fotoNueva ? <img src={fotoNueva} alt="" className="w-full h-full object-cover" />
-                    : <span className="text-lg" style={{ color: activeTheme.textDim }}>+</span>}
+                    : <span className="text-xs" style={{ color: activeTheme.textDim }}>Foto</span>}
                 </button>
-                <input placeholder="Nombre" value={nombre} onChange={(e) => setNombre(e.target.value)}
-                  className="flex-1 rounded-md px-3 py-2 text-sm outline-none" style={inputStyle} />
-                <input placeholder="#" value={numero} onChange={(e) => setNumero(e.target.value.replace(/[^0-9]/g, ""))}
-                  className="w-14 rounded-md px-2 py-2 text-sm outline-none f-mono text-center" style={inputStyle} />
               </div>
-              {errorFoto && <div className="text-xs mb-3" style={{ color: activeTheme.danger }}>{errorFoto}</div>}
+              {errorFoto && <div className="text-xs mb-3 text-center" style={{ color: activeTheme.danger }}>{errorFoto}</div>}
+              <div className="flex gap-2 mb-3">
+                <input placeholder="Nombre" value={nombre} onChange={(e) => setNombre(e.target.value)}
+                  className="flex-1 min-w-0 rounded-md px-3 py-2 text-sm outline-none" style={inputStyle} />
+                <input placeholder="#" value={numero} onChange={(e) => setNumero(e.target.value.replace(/[^0-9]/g, ""))}
+                  className="w-16 shrink-0 rounded-md px-2 py-2 text-sm outline-none f-mono text-center" style={inputStyle} />
+              </div>
               <select value={posicion} onChange={(e) => setPosicion(e.target.value)}
                 className="w-full rounded-md px-3 py-2 text-sm outline-none mb-4" style={inputStyle}>
                 <optgroup label="Ofensiva">
@@ -1675,9 +1679,9 @@ export default function App() {
 
         {/* ============ MODAL JUGADOR (ver / editar) ============ */}
         {jugadorModal && (
-          <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4"
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
             style={{ background: "rgba(6,8,7,0.75)" }} onClick={cerrarModalJugador}>
-            <div className="w-full sm:max-w-sm rounded-t-2xl sm:rounded-2xl p-5"
+            <div className="w-full max-w-sm rounded-2xl p-5 overflow-hidden"
               style={{ background: activeTheme.surface, border: `1px solid ${activeTheme.border}` }}
               onClick={(e) => e.stopPropagation()}>
               <input type="file" accept="image/*" ref={inputFotoModalJugador} className="hidden" onChange={onFotoModalChange} />
@@ -2212,9 +2216,9 @@ export default function App() {
           const p = partidosLiga.find((x) => x.id === menuPartidoAbierto);
           if (!p) return null;
           return (
-            <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4"
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
               style={{ background: "rgba(6,8,7,0.75)" }} onClick={() => setMenuPartidoAbierto(null)}>
-              <div className="w-full sm:max-w-sm rounded-t-2xl sm:rounded-2xl p-5"
+              <div className="w-full max-w-sm rounded-2xl p-5 overflow-hidden"
                 style={{ background: activeTheme.surface, border: `1px solid ${activeTheme.border}` }}
                 onClick={(e) => e.stopPropagation()}>
                 <div className="text-[11px] f-mono mb-3 uppercase tracking-wide" style={{ color: activeTheme.textDim }}>
@@ -2237,9 +2241,9 @@ export default function App() {
 
         {/* ============ MODAL: AGREGAR JUEGO ============ */}
         {modalPartidoAbierto && (
-          <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4"
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
             style={{ background: "rgba(6,8,7,0.75)" }} onClick={() => setModalPartidoAbierto(false)}>
-            <div className="w-full sm:max-w-sm rounded-t-2xl sm:rounded-2xl p-5"
+            <div className="w-full max-w-sm rounded-2xl p-5 overflow-hidden"
               style={{ background: activeTheme.surface, border: `1px solid ${activeTheme.border}` }}
               onClick={(e) => e.stopPropagation()}>
               <div className="text-[11px] f-mono mb-3 uppercase tracking-wide" style={{ color: activeTheme.textDim }}>Agregar juego</div>
@@ -2323,9 +2327,9 @@ export default function App() {
 
         {/* ============ MODAL: EDITAR ENCUENTRO (equipos, hora, marcador, eliminar) ============ */}
         {modalEditarPartido && (
-          <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4"
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
             style={{ background: "rgba(6,8,7,0.75)" }} onClick={cerrarEditarPartido}>
-            <div className="w-full sm:max-w-sm rounded-t-2xl sm:rounded-2xl p-5 max-h-[90vh] overflow-y-auto"
+            <div className="w-full max-w-sm rounded-2xl p-5 max-h-[90vh] overflow-y-auto"
               style={{ background: activeTheme.surface, border: `1px solid ${activeTheme.border}` }}
               onClick={(e) => e.stopPropagation()}>
               <div className="text-[11px] f-mono mb-3 uppercase tracking-wide" style={{ color: activeTheme.textDim }}>Editar encuentro</div>
@@ -2440,9 +2444,9 @@ export default function App() {
 
         {/* ============ MODAL: AGREGAR/EDITAR EQUIPO ============ */}
         {modalEquipo && (
-          <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4"
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
             style={{ background: "rgba(6,8,7,0.75)" }} onClick={cerrarModalEquipo}>
-            <div className="w-full sm:max-w-sm rounded-t-2xl sm:rounded-2xl p-5"
+            <div className="w-full max-w-sm rounded-2xl p-5 overflow-hidden"
               style={{ background: activeTheme.surface, border: `1px solid ${activeTheme.border}` }}
               onClick={(e) => e.stopPropagation()}>
               <div className="text-[11px] f-mono mb-3 uppercase tracking-wide" style={{ color: activeTheme.textDim }}>
@@ -2494,9 +2498,9 @@ export default function App() {
 
         {/* ============ MODAL: CONFIRMACIÓN GENÉRICA (borrar jugador/equipo/jugada) ============ */}
         {confirmacion && (
-          <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4"
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
             style={{ background: "rgba(6,8,7,0.75)" }} onClick={cerrarConfirmacion}>
-            <div className="w-full sm:max-w-sm rounded-t-2xl sm:rounded-2xl p-5"
+            <div className="w-full max-w-sm rounded-2xl p-5 overflow-hidden"
               style={{ background: activeTheme.surface, border: `1px solid ${activeTheme.border}` }}
               onClick={(e) => e.stopPropagation()}>
               <div className="text-[11px] f-mono mb-2 uppercase tracking-wide" style={{ color: activeTheme.danger }}>{confirmacion.titulo}</div>
@@ -2513,9 +2517,9 @@ export default function App() {
 
         {/* ============ MODAL: ELIMINAR LIGA (requiere PIN de organizador) ============ */}
         {modalEliminarLiga && (
-          <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4"
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
             style={{ background: "rgba(6,8,7,0.75)" }} onClick={cerrarModalEliminarLiga}>
-            <div className="w-full sm:max-w-sm rounded-t-2xl sm:rounded-2xl p-5"
+            <div className="w-full max-w-sm rounded-2xl p-5 overflow-hidden"
               style={{ background: activeTheme.surface, border: `1px solid ${activeTheme.border}` }}
               onClick={(e) => e.stopPropagation()}>
               <div className="text-[11px] f-mono mb-2 uppercase tracking-wide" style={{ color: activeTheme.danger }}>Eliminar liga</div>
