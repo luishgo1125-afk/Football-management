@@ -59,6 +59,9 @@ const LIGHT_THEME = {
 
 const uid = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
 
+/* Construye un link de Google Maps a partir del texto de ubicación (ciudad, estadio, dirección, etc.) */
+const urlMapsDeLugar = (lugar) => `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(lugar)}`;
+
 /* Íconos de línea fina para el toggle de modo claro/oscuro (heredan color del texto) */
 function SunIcon({ size = 16 }) {
   return (
@@ -136,7 +139,89 @@ function PlaybookIcon({ size = 14 }) {
     </svg>
   );
 }
+function GearIcon({ size = 14 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ display: "inline", verticalAlign: "-2px" }}>
+      <circle cx="12" cy="12" r="3.2" />
+      <path d="M19.4 13.5a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V19.5a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1.08-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H4.5a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1.08 1.65 1.65 0 0 0-.33-1.82l-.06-.06A2 2 0 1 1 8.54 4.3l.06.06a1.65 1.65 0 0 0 1.82.33h.08a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51h.08a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v.08a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z" />
+    </svg>
+  );
+}
+function WhistleIcon({ size = 16 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" style={{ display: "block" }}>
+      <path d="M13 10.5H8.2a4.2 4.2 0 1 0 0 6.5H13a3.4 3.4 0 0 0 3.4-3.4v-.1a3 3 0 0 0-3-3Z" />
+      <circle cx="7" cy="13.7" r="1.1" fill="currentColor" stroke="none" />
+      <path d="M16.4 11.3 20 8" />
+      <path d="M18.2 6.2 20 8l1.8-1.2" />
+    </svg>
+  );
+}
+function BallIcon({ size = 22 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ display: "block" }}>
+      <ellipse cx="12" cy="12" rx="7.2" ry="9.6" />
+      <path d="M6.4 12h11.2" />
+      <path d="M8.7 8.6l1.3 1.2M8.7 15.4l1.3-1.2M15.3 8.6l-1.3 1.2M15.3 15.4l-1.3-1.2" />
+      <line x1="12" y1="9.4" x2="12" y2="14.6" />
+    </svg>
+  );
+}
+function EyeIcon({ size = 16 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" style={{ display: "block" }}>
+      <path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12Z" />
+      <circle cx="12" cy="12" r="2.6" />
+    </svg>
+  );
+}
+/* Diagrama de jugada — el elemento de firma de la pantalla de inicio de sesión */
+function PlayDiagram({ offense, defense, linea, width = 300, height = 168 }) {
+  // Jugada real: "Four Verticals" (4 Verts) en shotgun 2x2, contra una defensa Cover 2
+  return (
+    <svg width={width} height={height} viewBox="0 0 300 168" fill="none">
+      {/* Línea de golpeo */}
+      <line x1="10" y1="104" x2="290" y2="104" stroke={linea} strokeWidth="1.5" strokeDasharray="1 7" strokeLinecap="round" />
+
+      {/* Defensa Cover 2: dos safeties profundos, dos corners, dos apoyadores */}
+      <circle cx="112" cy="24" r="6.5" stroke={defense} strokeWidth="2" />
+      <circle cx="188" cy="24" r="6.5" stroke={defense} strokeWidth="2" />
+      <circle cx="22" cy="62" r="6.5" stroke={defense} strokeWidth="2" />
+      <circle cx="278" cy="62" r="6.5" stroke={defense} strokeWidth="2" />
+      <circle cx="76" cy="70" r="6.5" stroke={defense} strokeWidth="2" />
+      <circle cx="224" cy="70" r="6.5" stroke={defense} strokeWidth="2" />
+      <circle cx="150" cy="80" r="6.5" stroke={defense} strokeWidth="2" />
+
+      {/* Línea ofensiva */}
+      <rect x="107" y="100" width="8.5" height="8.5" fill={offense} />
+      <rect x="126" y="100" width="8.5" height="8.5" fill={offense} />
+      <rect x="145.5" y="100" width="8.5" height="8.5" fill={offense} />
+      <rect x="165" y="100" width="8.5" height="8.5" fill={offense} />
+      <rect x="184" y="100" width="8.5" height="8.5" fill={offense} />
+
+      {/* Receptores abiertos en la línea (2x2) */}
+      <circle cx="22" cy="104" r="4" fill={offense} />
+      <circle cx="76" cy="104" r="4" fill={offense} />
+      <circle cx="224" cy="104" r="4" fill={offense} />
+      <circle cx="278" cy="104" r="4" fill={offense} />
+      {/* Mariscal en shotgun y corredor */}
+      <circle cx="150" cy="124" r="4.5" fill={offense} />
+      <circle cx="172" cy="129" r="4.5" fill={offense} />
+
+      {/* Cuatro rutas verticales */}
+      {[22, 76, 224, 278].map((x) => (
+        <React.Fragment key={x}>
+          <line x1={x} y1="100" x2={x} y2="16" stroke={offense} strokeWidth="1.6" strokeLinecap="round" />
+          <path d={`M${x - 5} 24 L ${x} 16 L ${x + 5} 24`} stroke={offense} strokeWidth="1.6" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+        </React.Fragment>
+      ))}
+      {/* Ruta de escape corta del corredor */}
+      <path d="M172 129 C 172 118, 168 112, 160 106" stroke={offense} strokeWidth="1.6" fill="none" strokeLinecap="round" strokeDasharray="1 6" />
+    </svg>
+  );
+}
 const posASide = (pos) => (POSICIONES.ofensiva.includes(pos) ? "ofensiva" : "defensiva");
+
 
 const FIELD_W = 300;
 const FIELD_H = 460;
@@ -1460,9 +1545,10 @@ export default function App() {
 
   const fuentes = (
     <style>{`
-      @import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@600;700&display=swap');
+      @import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@600;700&family=Big+Shoulders+Display:wght@700;800&display=swap');
       .f-display { font-family:'Barlow Condensed',sans-serif; letter-spacing:0.02em; }
       .f-mono { font-family:'JetBrains Mono',monospace; }
+      .f-score { font-family:'Big Shoulders Display',sans-serif; letter-spacing:0.01em; }
       body, input, select, button { font-family:'Inter',sans-serif; }
       /* Evita el zoom automático de iOS/Android al enfocar campos (ocurre si el font-size es menor a 16px) */
       input, select, textarea { font-size: 16px !important; }
@@ -1504,26 +1590,36 @@ export default function App() {
 
   if (!sesion) {
     return (
-      <div className="min-h-screen w-full flex items-center justify-center" style={{ background: activeTheme.bg }}>
+      <div className="h-screen w-full flex items-center justify-center relative overflow-hidden" style={{ background: activeTheme.bg }}>
         {fuentes}
         {bannerSinConexion}
+        {/* Resplandor sutil detrás del diagrama, único acento decorativo de la pantalla */}
+        <div className="absolute inset-0 pointer-events-none" style={{
+          background: `radial-gradient(ellipse 480px 320px at 50% 30%, ${activeTheme.offense}14, transparent 70%)`,
+        }} />
         <button onClick={toggleModo}
           className="fixed top-4 right-4 z-[60] w-10 h-10 rounded-full flex items-center justify-center"
           style={{ background: activeTheme.surface, border: `1px solid ${activeTheme.border}`, color: activeTheme.textDim }}
           aria-label="Cambiar modo claro/oscuro">
           {modoClaro ? <MoonIcon /> : <SunIcon />}
         </button>
-        <div className="max-w-md w-full mx-auto px-4 py-10 pt-16">
+        <div className="max-w-md w-full mx-auto px-5 max-h-[92vh] overflow-y-auto relative">
+          <div className="flex justify-center mb-1">
+            <PlayDiagram offense={activeTheme.text} defense={activeTheme.danger} linea={activeTheme.textDim} />
+          </div>
           {ligaElegida?.foto && (
-            <div className="w-16 h-16 rounded-full overflow-hidden mx-auto mb-3 flex items-center justify-center"
+            <div className="w-14 h-14 rounded-full overflow-hidden mx-auto mb-3 flex items-center justify-center"
               style={{ background: activeTheme.surface2, border: `1px solid ${activeTheme.border}` }}>
               <img src={ligaElegida.foto} alt="" className="w-full h-full object-cover" />
             </div>
           )}
-          <div className="f-display text-3xl font-bold text-center mb-1" style={{ color: activeTheme.text }}>
-            {ligaElegida ? ligaElegida.nombre : "Roster & Playbook"}
+          {!ligaElegida && pantallaLogin === "menu" && (
+            <div className="text-[11px] f-mono uppercase tracking-[0.15em] text-center mb-1" style={{ color: activeTheme.offense }}>Temporada 2026</div>
+          )}
+          <div className="f-score font-extrabold text-center mb-1 uppercase" style={{ color: activeTheme.text, fontSize: "2.5rem", lineHeight: 1.02 }}>
+            {ligaElegida ? ligaElegida.nombre : "Football Manager"}
           </div>
-          <div className="text-sm text-center mb-8" style={{ color: activeTheme.textDim }}>
+          <div className="text-sm text-center mb-7" style={{ color: activeTheme.textDim }}>
             {pantallaLogin === "menu" ? "Elige cómo quieres entrar"
               : pantallaLogin === "elegirLiga" ? "Selecciona tu liga"
               : pantallaLogin === "crearLiga" ? "Crea tu liga"
@@ -1535,18 +1631,21 @@ export default function App() {
           {pantallaLogin === "menu" && (
             <div className="flex flex-col gap-3">
               <button onClick={() => abrirElegirLiga("organizador")}
-                className="w-full py-3.5 rounded-lg font-semibold text-sm"
-                style={{ background: activeTheme.text, color: activeTheme.bg }}>
+                className="w-full flex items-center gap-3 py-3.5 px-4 rounded-lg font-semibold text-sm"
+                style={{ background: activeTheme.offense, color: "#1A1305" }}>
+                <WhistleIcon size={17} />
                 Soy el organizador
               </button>
               <button onClick={() => abrirElegirLiga("equipo")}
-                className="w-full py-3.5 rounded-lg font-semibold text-sm"
+                className="w-full flex items-center gap-3 py-3.5 px-4 rounded-lg font-semibold text-sm"
                 style={{ background: activeTheme.surface, color: activeTheme.text, border: `1px solid ${activeTheme.border}` }}>
+                <PinIcon size={17} />
                 Tengo un PIN de equipo
               </button>
               <button onClick={() => abrirElegirLiga("visitante")}
-                className="w-full py-3.5 rounded-lg font-semibold text-sm"
+                className="w-full flex items-center gap-3 py-3.5 px-4 rounded-lg font-semibold text-sm"
                 style={{ background: "transparent", color: activeTheme.textDim, border: `1px solid ${activeTheme.border}` }}>
+                <EyeIcon size={17} />
                 Entrar como visitante
               </button>
             </div>
@@ -1915,7 +2014,7 @@ export default function App() {
                   <button onClick={() => { setMenuPrincipalAbierto(false); setModalCuenta(true); }}
                     className="w-full flex items-center gap-2 text-left px-3 py-2.5 rounded-lg text-sm font-semibold"
                     style={{ color: activeTheme.text }}>
-                    <span className="inline-block w-[15px] text-center">⚙</span> Cuenta
+                    <GearIcon size={15} /> Cuenta
                   </button>
                 </div>
               </>
@@ -2369,7 +2468,14 @@ export default function App() {
                       </div>
                       {renderLogoEquipo(proximoPartido.visitante)}
                     </div>
-                    {proximoPartido.lugar && <div className="flex items-center justify-center gap-1 text-xs text-center mt-4" style={{ color: activeTheme.textDim }}><PinIcon />{proximoPartido.lugar}</div>}
+                    {proximoPartido.lugar && (
+                      <a href={urlMapsDeLugar(proximoPartido.lugar)} target="_blank" rel="noopener noreferrer"
+                        onClick={(e) => e.stopPropagation()}
+                        className="flex items-center justify-center gap-1 text-xs text-center mt-4 underline decoration-dotted underline-offset-2"
+                        style={{ color: activeTheme.textDim }}>
+                        <PinIcon />{proximoPartido.lugar}
+                      </a>
+                    )}
                   </>
                 )}
               </div>
@@ -2476,7 +2582,16 @@ export default function App() {
                                 {renderLogoEquipo(p.visitante)}
                               </div>
 
-                              {p.lugar && <div className="flex items-center justify-center gap-1 text-xs text-center mt-4" style={{ color: activeTheme.textDim }}><PinIcon />{p.lugar}</div>}
+                              {p.lugar && (
+                                <a href={urlMapsDeLugar(p.lugar)} target="_blank" rel="noopener noreferrer"
+                                  onClick={(e) => e.stopPropagation()}
+                                  onMouseDown={(e) => e.stopPropagation()}
+                                  onTouchStart={(e) => e.stopPropagation()}
+                                  className="flex items-center justify-center gap-1 text-xs text-center mt-4 underline decoration-dotted underline-offset-2"
+                                  style={{ color: activeTheme.textDim }}>
+                                  <PinIcon />{p.lugar}
+                                </a>
+                              )}
                             </div>
                           );
                         })}
