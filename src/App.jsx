@@ -587,6 +587,13 @@ export default function App() {
   const [errorEliminarLiga, setErrorEliminarLiga] = useState("");
   const [eliminandoLiga, setEliminandoLiga] = useState(false);
 
+  // Cambiar PIN de la cuenta de organizador
+  const [modalCambiarPin, setModalCambiarPin] = useState(false);
+  const [pinActualInput, setPinActualInput] = useState("");
+  const [pinNuevoInput, setPinNuevoInput] = useState("");
+  const [pinNuevoConfirmarInput, setPinNuevoConfirmarInput] = useState("");
+  const [errorCambiarPin, setErrorCambiarPin] = useState("");
+
   // Confirmación genérica antes de acciones destructivas (borrar jugador/equipo/jugada, etc.)
   const [confirmacion, setConfirmacion] = useState(null); // { titulo, mensaje, onConfirmar }
   const pedirConfirmacion = (titulo, mensaje, onConfirmar) => setConfirmacion({ titulo, mensaje, onConfirmar });
@@ -910,6 +917,48 @@ export default function App() {
     } finally {
       setEliminandoLiga(false);
     }
+  };
+
+  const abrirModalCambiarPin = () => {
+    setMenuEquiposAbierto(false);
+    setPinActualInput("");
+    setPinNuevoInput("");
+    setPinNuevoConfirmarInput("");
+    setErrorCambiarPin("");
+    setModalCambiarPin(true);
+  };
+  const cerrarModalCambiarPin = () => {
+    setModalCambiarPin(false);
+    setPinActualInput("");
+    setPinNuevoInput("");
+    setPinNuevoConfirmarInput("");
+    setErrorCambiarPin("");
+  };
+
+  const confirmarCambiarPin = () => {
+    setErrorCambiarPin("");
+    if (pinActualInput.trim() !== pinCreador) {
+      setErrorCambiarPin("El PIN actual es incorrecto.");
+      return;
+    }
+    if (!pinNuevoInput.trim() || pinNuevoInput.trim().length < 4) {
+      setErrorCambiarPin("El nuevo PIN debe tener al menos 4 dígitos.");
+      return;
+    }
+    if (pinNuevoInput.trim() === pinActualInput.trim()) {
+      setErrorCambiarPin("El nuevo PIN debe ser distinto al actual.");
+      return;
+    }
+    if (equipos.some((e) => e.pin === pinNuevoInput.trim())) {
+      setErrorCambiarPin("Ese PIN ya lo usa un equipo de la liga. Elige otro.");
+      return;
+    }
+    if (pinNuevoInput.trim() !== pinNuevoConfirmarInput.trim()) {
+      setErrorCambiarPin("Los PIN nuevos no coinciden.");
+      return;
+    }
+    setPinCreador(pinNuevoInput.trim());
+    cerrarModalCambiarPin();
   };
 
   /* ---------- plantilla ---------- */
@@ -1670,9 +1719,16 @@ export default function App() {
                         <div className="flex-1 min-w-0">
                           <div className="text-sm font-semibold truncate" style={{ color: eq.esPropio ? activeTheme.offense : activeTheme.text }}>{eq.nombre}</div>
                           <div className="text-xs truncate" style={{ color: activeTheme.textDim }}>
-                            {eq.lugar || "Sin ubicación"}{sesion.tipo === "creador" ? ` · PIN ${eq.pin}` : ""}
+                            {eq.lugar || "Sin ubicación"}
                           </div>
                         </div>
+                        {sesion.tipo === "creador" && (
+                          <div className="shrink-0 flex flex-col items-center rounded-md px-2 py-1"
+                            style={{ background: activeTheme.surface, border: `1px solid ${activeTheme.border}` }}>
+                            <div className="text-[8px] f-mono uppercase leading-none mb-1" style={{ color: activeTheme.textDim }}>PIN</div>
+                            <div className="f-mono text-sm font-bold tracking-widest leading-none" style={{ color: activeTheme.text }}>{eq.pin}</div>
+                          </div>
+                        )}
                         {puedeEditarEquipo(eq) && (
                           <button onClick={() => abrirEditarEquipo(eq)} className="text-xs px-2 shrink-0" style={{ color: activeTheme.textDim }}>✎</button>
                         )}
@@ -1691,6 +1747,8 @@ export default function App() {
                         <span className="text-[10px] f-mono uppercase tracking-wide" style={{ color: activeTheme.textDim }}>Cuenta</span>
                         <div className="flex-1 h-px" style={{ background: activeTheme.border }} />
                       </div>
+                      <button onClick={abrirModalCambiarPin} className="w-full py-2 rounded-md text-xs font-semibold mb-2"
+                        style={{ background: activeTheme.surface2, color: activeTheme.text, border: `1px solid ${activeTheme.border}` }}>Cambiar PIN de organizador</button>
                       <button onClick={abrirModalEliminarLiga} className="w-full py-2 rounded-md text-xs font-semibold"
                         style={{ background: "transparent", color: activeTheme.danger, border: `1px dashed ${activeTheme.danger}66` }}>Eliminar liga</button>
                     </>
@@ -2993,6 +3051,36 @@ export default function App() {
                   style={{ background: activeTheme.danger, color: "#FFFFFF", opacity: eliminandoLiga || !pinEliminarLigaInput.trim() ? 0.6 : 1 }}>
                   {eliminandoLiga ? "Eliminando…" : "Eliminar liga"}
                 </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ============ MODAL: CAMBIAR PIN DE ORGANIZADOR ============ */}
+        {modalCambiarPin && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
+            style={{ background: "rgba(6,8,7,0.75)" }} onClick={cerrarModalCambiarPin}>
+            <div className="w-full max-w-sm rounded-2xl p-5 overflow-hidden"
+              style={{ background: activeTheme.surface, border: `1px solid ${activeTheme.border}` }}
+              onClick={(e) => e.stopPropagation()}>
+              <div className="text-[11px] f-mono mb-3 uppercase tracking-wide" style={{ color: activeTheme.textDim }}>Cambiar PIN de organizador</div>
+              <div className="flex flex-col gap-2 mb-4">
+                <input placeholder="PIN actual" value={pinActualInput} type="password" inputMode="numeric"
+                  onChange={(e) => setPinActualInput(e.target.value.replace(/[^0-9]/g, ""))}
+                  className="rounded-md px-3 py-3 text-sm outline-none f-mono text-center tracking-widest" style={inputStyle} />
+                <input placeholder="Nuevo PIN" value={pinNuevoInput} type="password" inputMode="numeric"
+                  onChange={(e) => setPinNuevoInput(e.target.value.replace(/[^0-9]/g, ""))}
+                  className="rounded-md px-3 py-3 text-sm outline-none f-mono text-center tracking-widest" style={inputStyle} />
+                <input placeholder="Confirma el nuevo PIN" value={pinNuevoConfirmarInput} type="password" inputMode="numeric"
+                  onChange={(e) => setPinNuevoConfirmarInput(e.target.value.replace(/[^0-9]/g, ""))}
+                  className="rounded-md px-3 py-3 text-sm outline-none f-mono text-center tracking-widest" style={inputStyle} />
+              </div>
+              {errorCambiarPin && <div className="text-xs mb-3" style={{ color: activeTheme.danger }}>{errorCambiarPin}</div>}
+              <div className="flex gap-2">
+                <button onClick={cerrarModalCambiarPin} className="flex-1 py-3 rounded-lg font-semibold text-sm"
+                  style={{ background: activeTheme.surface2, color: activeTheme.text, border: `1px solid ${activeTheme.border}` }}>Cancelar</button>
+                <button onClick={confirmarCambiarPin} className="flex-1 py-3 rounded-lg font-semibold text-sm"
+                  style={{ background: activeTheme.text, color: activeTheme.bg }}>Guardar</button>
               </div>
             </div>
           </div>
