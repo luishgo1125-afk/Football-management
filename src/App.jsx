@@ -579,7 +579,9 @@ export default function App() {
 
   // Liga: alta / edición de equipos (nombre + de dónde son)
   const [modalEquipo, setModalEquipo] = useState(null); // { modo:'nuevo'|'editar', esPropio, id, nombreViejo, nombre, lugar, foto, pin }
-  const [menuEquiposAbierto, setMenuEquiposAbierto] = useState(false);
+  const [menuPrincipalAbierto, setMenuPrincipalAbierto] = useState(false); // dropdown corto del ☰: Equipos / Cuenta
+  const [vistaEquiposAbierta, setVistaEquiposAbierta] = useState(false); // pantalla completa con el listado de equipos
+  const [modalCuenta, setModalCuenta] = useState(false); // pop up con las opciones de cuenta
 
   // Eliminar liga por completo (requiere el PIN de organizador)
   const [modalEliminarLiga, setModalEliminarLiga] = useState(false);
@@ -618,6 +620,12 @@ export default function App() {
   };
   const toggleRosterEquipo = (equipoId) => {
     setRostersAbiertos((prev) => ({ ...prev, [equipoId]: !prev[equipoId] }));
+  };
+  // Ver el roster de un equipo desde la pantalla "Equipos" (por ejemplo, sesión de equipo consultando a un rival)
+  const [modalRosterEquipo, setModalRosterEquipo] = useState(null); // equipoId | null
+  const abrirRosterEquipo = (equipoId) => {
+    if (!rostersEquipos[equipoId]) cargarRosterEquipo(equipoId);
+    setModalRosterEquipo(equipoId);
   };
   // Precarga el conteo de jugadores de todos los equipos en cuanto se entra al tab Roster,
   // así el número se ve de inmediato sin tener que expandir cada equipo.
@@ -865,7 +873,9 @@ export default function App() {
 
   const cerrarSesion = () => {
     setSesion(null);
-    setMenuEquiposAbierto(false);
+    setMenuPrincipalAbierto(false);
+    setVistaEquiposAbierta(false);
+    setModalCuenta(false);
     setJugadores([]); setJugadas([]);
     setDatosEquipoCargados(false);
     setLigaId(null); setLigaNombre(""); setPinCreador(""); setEquipos([]); setPartidosLiga([]); setFechaLimiteRoster(""); setLigaFoto(null); setAnotadores([]);
@@ -877,7 +887,7 @@ export default function App() {
   };
 
   const abrirModalEliminarLiga = () => {
-    setMenuEquiposAbierto(false);
+    setModalCuenta(false);
     setPinEliminarLigaInput("");
     setErrorEliminarLiga("");
     setModalEliminarLiga(true);
@@ -920,7 +930,7 @@ export default function App() {
   };
 
   const abrirModalCambiarPin = () => {
-    setMenuEquiposAbierto(false);
+    setModalCuenta(false);
     setPinActualInput("");
     setPinNuevoInput("");
     setPinNuevoConfirmarInput("");
@@ -1350,10 +1360,9 @@ export default function App() {
 
   const puedeEditarEquipo = (entry) => sesion && (sesion.tipo === "creador" || (sesion.tipo === "equipo" && entry.id === sesion.equipoId));
 
-  const abrirNuevoEquipo = () => { setMenuEquiposAbierto(false); setModalEquipo({ modo: "nuevo", nombre: "", lugar: "", foto: null }); };
+  const abrirNuevoEquipo = () => { setModalEquipo({ modo: "nuevo", nombre: "", lugar: "", foto: null }); };
   const abrirEditarEquipo = (entry) => {
     if (!puedeEditarEquipo(entry)) return;
-    setMenuEquiposAbierto(false);
     setModalEquipo({ modo: "editar", esPropio: entry.esPropio, id: entry.id, nombreViejo: entry.nombre, nombre: entry.nombre, lugar: entry.lugar || "", foto: entry.foto || null, pin: entry.pin });
   };
   const cerrarModalEquipo = () => setModalEquipo(null);
@@ -1515,7 +1524,12 @@ export default function App() {
             {ligaElegida ? ligaElegida.nombre : "Roster & Playbook"}
           </div>
           <div className="text-sm text-center mb-8" style={{ color: activeTheme.textDim }}>
-            {pantallaLogin === "menu" ? "Elige cómo quieres entrar" : "Selecciona tu liga"}
+            {pantallaLogin === "menu" ? "Elige cómo quieres entrar"
+              : pantallaLogin === "elegirLiga" ? "Selecciona tu liga"
+              : pantallaLogin === "crearLiga" ? "Crea tu liga"
+              : pantallaLogin === "pinOrganizador" ? "Introduce tu PIN de organizador"
+              : pantallaLogin === "pinEquipo" ? "Introduce el PIN de tu equipo"
+              : ""}
           </div>
 
           {pantallaLogin === "menu" && (
@@ -1618,6 +1632,198 @@ export default function App() {
     );
   }
 
+  if (modalRosterEquipo) {
+    const eqRoster = listaEquipos.find((e) => e.id === modalRosterEquipo);
+    const estado = rostersEquipos[modalRosterEquipo];
+    const jugadoresEq = estado?.jugadores || [];
+    const ofensivaEq = jugadoresEq.filter((j) => j.lado === "ofensiva");
+    const defensivaEq = jugadoresEq.filter((j) => j.lado === "defensiva");
+    return (
+      <div className="min-h-screen w-full" style={{ background: activeTheme.bg }}>
+        {fuentes}
+        {bannerSinConexion}
+        <div className="max-w-md mx-auto px-4 pb-24 pt-6">
+          <div className="flex items-center gap-3 mb-6">
+            <button onClick={() => setModalRosterEquipo(null)}
+              className="w-10 h-10 rounded-full flex items-center justify-center shrink-0"
+              style={{ background: activeTheme.surface, border: `1px solid ${activeTheme.border}`, color: activeTheme.text }}
+              aria-label="Regresar">
+              <span style={{ transform: "rotate(180deg)", display: "block" }}><ChevronIcon size={16} /></span>
+            </button>
+            <div className="flex-1 min-w-0">
+              <div className="text-[11px] f-mono uppercase tracking-wide" style={{ color: activeTheme.textDim }}>Roster</div>
+              <div className="f-display text-xl font-bold uppercase truncate" style={{ color: activeTheme.text }}>{eqRoster?.nombre || "Equipo"}</div>
+            </div>
+          </div>
+
+          {estado?.cargando && (
+            <div className="text-xs" style={{ color: activeTheme.textDim }}>Cargando roster…</div>
+          )}
+          {estado?.cargado && jugadoresEq.length === 0 && (
+            <div className="text-xs" style={{ color: activeTheme.textDim }}>Este equipo todavía no ha registrado jugadores.</div>
+          )}
+          {estado?.cargado && jugadoresEq.length > 0 && (
+            <div className="flex flex-col gap-4">
+              {[["Ofensiva", ofensivaEq], ["Defensiva", defensivaEq]].map(([titulo, lista]) => (
+                lista.length > 0 && (
+                  <div key={titulo}>
+                    <div className="text-[11px] f-mono uppercase tracking-wide mb-2" style={{ color: activeTheme.textDim }}>{titulo}</div>
+                    <div className="flex flex-col gap-2">
+                      {lista.map((j) => (
+                        <div key={j.id} className="flex items-center gap-3 rounded-lg px-3 py-2"
+                          style={{ background: activeTheme.surface2, border: `1px solid ${activeTheme.border}` }}>
+                          <span className="text-[10px] px-1.5 py-0.5 rounded font-bold f-mono shrink-0"
+                            style={{ background: POSITION_COLORS[j.posicion], color: "#0A0D0C" }}>{j.posicion}</span>
+                          <div className="flex-1 min-w-0 text-sm font-semibold truncate" style={{ color: activeTheme.text }}>{j.nombre}</div>
+                          <div className="text-sm f-mono font-bold shrink-0" style={{ color: activeTheme.textDim }}>{j.numero}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  if (vistaEquiposAbierta) {
+    return (
+      <div className="min-h-screen w-full" style={{ background: activeTheme.bg }}>
+        {fuentes}
+        {bannerSinConexion}
+        <div className="max-w-md mx-auto px-4 pb-24 pt-6">
+          <div className="flex items-center gap-3 mb-6">
+            <button onClick={() => setVistaEquiposAbierta(false)}
+              className="w-10 h-10 rounded-full flex items-center justify-center shrink-0"
+              style={{ background: activeTheme.surface, border: `1px solid ${activeTheme.border}`, color: activeTheme.text }}
+              aria-label="Regresar">
+              <span style={{ transform: "rotate(180deg)", display: "block" }}><ChevronIcon size={16} /></span>
+            </button>
+            <div className="f-display text-xl font-bold uppercase flex-1" style={{ color: activeTheme.text }}>Equipos</div>
+            {sesion.tipo === "creador" && (
+              <button onClick={abrirNuevoEquipo}
+                className="w-9 h-9 rounded-full flex items-center justify-center text-base font-bold shrink-0"
+                style={{ background: activeTheme.text, color: activeTheme.bg }}>+</button>
+            )}
+          </div>
+
+          <div className="flex flex-col gap-2 mb-4">
+            {listaEquipos.length === 0 && (
+              <div className="text-xs" style={{ color: activeTheme.textDim }}>
+                {sesion.tipo === "creador" ? "Agrega tu primer equipo con el +." : "Todavía no hay equipos en la liga."}
+              </div>
+            )}
+            {listaEquipos.map((eq) => (
+              <div key={eq.id} onClick={sesion.tipo === "equipo" ? () => abrirRosterEquipo(eq.id) : undefined}
+                className="flex items-center gap-3 rounded-lg px-3 py-2.5"
+                style={{ background: activeTheme.surface2, border: `1px solid ${activeTheme.border}`, cursor: sesion.tipo === "equipo" ? "pointer" : "default" }}>
+                <div className="w-10 h-10 rounded-full overflow-hidden shrink-0 flex items-center justify-center"
+                  style={{ background: activeTheme.surface, border: `1px solid ${activeTheme.border}` }}>
+                  {eq.foto ? <img src={eq.foto} alt="" className="w-full h-full object-cover" /> : null}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-semibold truncate" style={{ color: eq.esPropio ? activeTheme.offense : activeTheme.text }}>{eq.nombre}</div>
+                  <div className="text-xs truncate" style={{ color: activeTheme.textDim }}>
+                    {eq.lugar || "Sin ubicación"}
+                  </div>
+                </div>
+                {sesion.tipo === "creador" && (
+                  <div className="shrink-0 flex flex-col items-center rounded-md px-2 py-1"
+                    style={{ background: activeTheme.surface, border: `1px solid ${activeTheme.border}` }}>
+                    <div className="text-[8px] f-mono uppercase leading-none mb-1" style={{ color: activeTheme.textDim }}>PIN</div>
+                    <div className="f-mono text-sm font-bold tracking-widest leading-none" style={{ color: activeTheme.text }}>{eq.pin}</div>
+                  </div>
+                )}
+                {puedeEditarEquipo(eq) && (
+                  <button onClick={(e) => { e.stopPropagation(); abrirEditarEquipo(eq); }} className="text-xs px-2 shrink-0" style={{ color: activeTheme.textDim }}>✎</button>
+                )}
+                {sesion.tipo === "creador" && (
+                  <button onClick={() => eliminarEquipoRegistro(eq.id)} className="text-xs px-2 shrink-0" style={{ color: activeTheme.danger }}>✕</button>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* ============ MODAL: AGREGAR/EDITAR EQUIPO (accesible desde la pantalla de Equipos) ============ */}
+        {modalEquipo && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
+            style={{ background: "rgba(6,8,7,0.75)" }} onClick={cerrarModalEquipo}>
+            <div className="w-full max-w-sm rounded-2xl p-5 overflow-hidden"
+              style={{ background: activeTheme.surface, border: `1px solid ${activeTheme.border}` }}
+              onClick={(e) => e.stopPropagation()}>
+              <div className="text-[11px] f-mono mb-3 uppercase tracking-wide" style={{ color: activeTheme.textDim }}>
+                {modalEquipo.modo === "nuevo" ? "Agregar equipo" : "Editar equipo"}
+              </div>
+              <input type="file" accept="image/*" ref={inputFotoModalEquipo} className="hidden" onChange={onFotoModalEquipoChange} />
+              <div className="flex justify-center mb-4">
+                <button onClick={() => inputFotoModalEquipo.current?.click()}
+                  className="w-20 h-20 rounded-full flex items-center justify-center overflow-hidden"
+                  style={{ background: activeTheme.surface2, border: `1px dashed ${activeTheme.border}` }}>
+                  {modalEquipo.foto ? <img src={modalEquipo.foto} alt="" className="w-full h-full object-cover" />
+                    : <span className="text-xs" style={{ color: activeTheme.textDim }}>Logo del equipo</span>}
+                </button>
+              </div>
+              {errorFoto && <div className="text-xs mb-3 text-center" style={{ color: activeTheme.danger }}>{errorFoto}</div>}
+              <div className="flex flex-col gap-2 mb-4">
+                <input placeholder="Nombre del equipo" value={modalEquipo.nombre}
+                  onChange={(e) => setModalEquipo((m) => ({ ...m, nombre: e.target.value }))}
+                  className="rounded-md px-3 py-2 text-sm outline-none" style={inputStyle} />
+                <input placeholder="De dónde son (ciudad, estadio...)" value={modalEquipo.lugar}
+                  onChange={(e) => setModalEquipo((m) => ({ ...m, lugar: e.target.value }))}
+                  className="rounded-md px-3 py-2 text-sm outline-none" style={inputStyle} />
+              </div>
+              {modalEquipo.modo === "editar" && (
+                <div className="text-[11px] mb-4" style={{ color: activeTheme.textDim }}>
+                  Si cambias el nombre, se actualiza en todos los juegos del calendario donde aparece.
+                </div>
+              )}
+              {modalEquipo.modo === "editar" && modalEquipo.pin && (
+                <div className="flex items-center justify-between mb-4 rounded-md px-3 py-2.5" style={{ background: activeTheme.surface2, border: `1px solid ${activeTheme.border}` }}>
+                  <div>
+                    <div className="text-[10px] f-mono uppercase" style={{ color: activeTheme.textDim }}>PIN del equipo</div>
+                    <div className="f-mono text-lg font-bold tracking-widest" style={{ color: activeTheme.text }}>{modalEquipo.pin}</div>
+                  </div>
+                  {sesion.tipo === "creador" && (
+                    <button onClick={regenerarPinModal} className="text-xs px-3 py-1.5 rounded font-medium" style={{ background: activeTheme.surface, color: activeTheme.text }}>Regenerar</button>
+                  )}
+                </div>
+              )}
+              <div className="flex gap-2">
+                <button onClick={cerrarModalEquipo} className="flex-1 py-3 rounded-lg font-semibold text-sm"
+                  style={{ background: activeTheme.surface2, color: activeTheme.text, border: `1px solid ${activeTheme.border}` }}>Cancelar</button>
+                <button onClick={guardarModalEquipo} className="flex-1 py-3 rounded-lg font-semibold text-sm"
+                  style={{ background: activeTheme.text, color: activeTheme.bg }}>Guardar</button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ============ MODAL: CONFIRMACIÓN GENÉRICA (borrar equipo) ============ */}
+        {confirmacion && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
+            style={{ background: "rgba(6,8,7,0.75)" }} onClick={cerrarConfirmacion}>
+            <div className="w-full max-w-sm rounded-2xl p-5 overflow-hidden"
+              style={{ background: activeTheme.surface, border: `1px solid ${activeTheme.border}` }}
+              onClick={(e) => e.stopPropagation()}>
+              <div className="text-[11px] f-mono mb-2 uppercase tracking-wide" style={{ color: activeTheme.danger }}>{confirmacion.titulo}</div>
+              <div className="text-sm mb-5" style={{ color: activeTheme.textDim }}>{confirmacion.mensaje}</div>
+              <div className="flex gap-2">
+                <button onClick={cerrarConfirmacion} className="flex-1 py-3 rounded-lg font-semibold text-sm"
+                  style={{ background: activeTheme.surface2, color: activeTheme.text, border: `1px solid ${activeTheme.border}` }}>Cancelar</button>
+                <button onClick={ejecutarConfirmacion} className="flex-1 py-3 rounded-lg font-semibold text-sm"
+                  style={{ background: activeTheme.danger, color: "#FFFFFF" }}>Eliminar</button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen w-full" style={{ background: activeTheme.bg }}>
       {fuentes}
@@ -1682,7 +1888,7 @@ export default function App() {
           </button>
 
           <div className="relative shrink-0">
-            <button onClick={() => setMenuEquiposAbierto((v) => !v)}
+            <button onClick={() => setMenuPrincipalAbierto((v) => !v)}
               className="w-10 h-10 rounded-full flex flex-col items-center justify-center gap-[3px] shrink-0"
               style={{ background: activeTheme.surface, border: `1px solid ${activeTheme.border}` }}>
               <span className="block w-4 h-[2px] rounded-full" style={{ background: activeTheme.text }} />
@@ -1690,69 +1896,21 @@ export default function App() {
               <span className="block w-4 h-[2px] rounded-full" style={{ background: activeTheme.text }} />
             </button>
 
-            {menuEquiposAbierto && (
+            {menuPrincipalAbierto && (
               <>
-                <div className="fixed inset-0 z-40" onClick={() => setMenuEquiposAbierto(false)} />
-                <div className="absolute right-0 top-12 z-50 w-72 max-w-[85vw] rounded-xl p-4"
+                <div className="fixed inset-0 z-40" onClick={() => setMenuPrincipalAbierto(false)} />
+                <div className="absolute right-0 top-12 z-50 w-56 max-w-[75vw] rounded-xl p-2 overflow-hidden"
                   style={{ background: activeTheme.surface, border: `1px solid ${activeTheme.border}`, boxShadow: "0 12px 30px rgba(0,0,0,0.45)" }}>
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="f-display text-base font-bold uppercase" style={{ color: activeTheme.text }}>Equipos</div>
-                    {sesion.tipo === "creador" && (
-                      <button onClick={abrirNuevoEquipo}
-                        className="w-8 h-8 rounded-full flex items-center justify-center text-base font-bold shrink-0"
-                        style={{ background: activeTheme.text, color: activeTheme.bg }}>+</button>
-                    )}
-                  </div>
-                  <div className="flex flex-col gap-2 max-h-80 overflow-y-auto mb-3">
-                    {listaEquipos.length === 0 && (
-                      <div className="text-xs" style={{ color: activeTheme.textDim }}>
-                        {sesion.tipo === "creador" ? "Agrega tu primer equipo con el +." : "Todavía no hay equipos en la liga."}
-                      </div>
-                    )}
-                    {listaEquipos.map((eq) => (
-                      <div key={eq.id} className="flex items-center gap-3 rounded-lg px-3 py-2.5"
-                        style={{ background: activeTheme.surface2, border: `1px solid ${activeTheme.border}` }}>
-                        <div className="w-8 h-8 rounded-full overflow-hidden shrink-0 flex items-center justify-center"
-                          style={{ background: activeTheme.surface, border: `1px solid ${activeTheme.border}` }}>
-                          {eq.foto ? <img src={eq.foto} alt="" className="w-full h-full object-cover" /> : null}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="text-sm font-semibold truncate" style={{ color: eq.esPropio ? activeTheme.offense : activeTheme.text }}>{eq.nombre}</div>
-                          <div className="text-xs truncate" style={{ color: activeTheme.textDim }}>
-                            {eq.lugar || "Sin ubicación"}
-                          </div>
-                        </div>
-                        {sesion.tipo === "creador" && (
-                          <div className="shrink-0 flex flex-col items-center rounded-md px-2 py-1"
-                            style={{ background: activeTheme.surface, border: `1px solid ${activeTheme.border}` }}>
-                            <div className="text-[8px] f-mono uppercase leading-none mb-1" style={{ color: activeTheme.textDim }}>PIN</div>
-                            <div className="f-mono text-sm font-bold tracking-widest leading-none" style={{ color: activeTheme.text }}>{eq.pin}</div>
-                          </div>
-                        )}
-                        {puedeEditarEquipo(eq) && (
-                          <button onClick={() => abrirEditarEquipo(eq)} className="text-xs px-2 shrink-0" style={{ color: activeTheme.textDim }}>✎</button>
-                        )}
-                        {sesion.tipo === "creador" && (
-                          <button onClick={() => eliminarEquipoRegistro(eq.id)} className="text-xs px-2 shrink-0" style={{ color: activeTheme.danger }}>✕</button>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                  <button onClick={cerrarSesion} className="w-full py-2 rounded-md text-xs font-semibold"
-                    style={{ background: activeTheme.surface2, color: activeTheme.danger, border: `1px solid ${activeTheme.border}` }}>Cerrar sesión</button>
-                  {sesion.tipo === "creador" && (
-                    <>
-                      <div className="flex items-center gap-2 mt-4 mb-2">
-                        <div className="flex-1 h-px" style={{ background: activeTheme.border }} />
-                        <span className="text-[10px] f-mono uppercase tracking-wide" style={{ color: activeTheme.textDim }}>Cuenta</span>
-                        <div className="flex-1 h-px" style={{ background: activeTheme.border }} />
-                      </div>
-                      <button onClick={abrirModalCambiarPin} className="w-full py-2 rounded-md text-xs font-semibold mb-2"
-                        style={{ background: activeTheme.surface2, color: activeTheme.text, border: `1px solid ${activeTheme.border}` }}>Cambiar PIN de organizador</button>
-                      <button onClick={abrirModalEliminarLiga} className="w-full py-2 rounded-md text-xs font-semibold"
-                        style={{ background: "transparent", color: activeTheme.danger, border: `1px dashed ${activeTheme.danger}66` }}>Eliminar liga</button>
-                    </>
-                  )}
+                  <button onClick={() => { setMenuPrincipalAbierto(false); setVistaEquiposAbierta(true); }}
+                    className="w-full flex items-center gap-2 text-left px-3 py-2.5 rounded-lg text-sm font-semibold"
+                    style={{ color: activeTheme.text }}>
+                    <RosterIcon size={15} /> Equipos
+                  </button>
+                  <button onClick={() => { setMenuPrincipalAbierto(false); setModalCuenta(true); }}
+                    className="w-full flex items-center gap-2 text-left px-3 py-2.5 rounded-lg text-sm font-semibold"
+                    style={{ color: activeTheme.text }}>
+                    <span className="inline-block w-[15px] text-center">⚙</span> Cuenta
+                  </button>
                 </div>
               </>
             )}
@@ -3023,6 +3181,31 @@ export default function App() {
                 <button onClick={ejecutarConfirmacion} className="flex-1 py-3 rounded-lg font-semibold text-sm"
                   style={{ background: activeTheme.danger, color: "#FFFFFF" }}>Eliminar</button>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* ============ MODAL: CUENTA (pop up con cerrar sesión / cambiar pin / eliminar liga) ============ */}
+        {modalCuenta && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
+            style={{ background: "rgba(6,8,7,0.75)" }} onClick={() => setModalCuenta(false)}>
+            <div className="w-full max-w-sm rounded-2xl p-5 overflow-hidden"
+              style={{ background: activeTheme.surface, border: `1px solid ${activeTheme.border}` }}
+              onClick={(e) => e.stopPropagation()}>
+              <div className="text-[11px] f-mono mb-3 uppercase tracking-wide" style={{ color: activeTheme.textDim }}>Cuenta</div>
+              <div className="flex flex-col gap-2">
+                <button onClick={() => { setModalCuenta(false); cerrarSesion(); }} className="w-full py-3 rounded-lg text-sm font-semibold"
+                  style={{ background: activeTheme.surface2, color: activeTheme.danger, border: `1px solid ${activeTheme.border}` }}>Cerrar sesión</button>
+                {sesion.tipo === "creador" && (
+                  <>
+                    <button onClick={abrirModalCambiarPin} className="w-full py-3 rounded-lg text-sm font-semibold"
+                      style={{ background: activeTheme.surface2, color: activeTheme.text, border: `1px solid ${activeTheme.border}` }}>Cambiar PIN de organizador</button>
+                    <button onClick={abrirModalEliminarLiga} className="w-full py-3 rounded-lg text-sm font-semibold"
+                      style={{ background: "transparent", color: activeTheme.danger, border: `1px dashed ${activeTheme.danger}66` }}>Eliminar liga</button>
+                  </>
+                )}
+              </div>
+              <button onClick={() => setModalCuenta(false)} className="w-full py-2 mt-3 text-xs font-medium" style={{ color: activeTheme.textDim }}>Cerrar</button>
             </div>
           </div>
         )}
