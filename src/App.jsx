@@ -1643,38 +1643,44 @@ export default function App() {
         {fuentes}
         {bannerSinConexion}
         <div className="max-w-md mx-auto px-4 pb-24 pt-6">
-          <div className="flex items-center gap-3 mb-6">
+          <div className="relative mb-8">
             <button onClick={() => setModalRosterEquipo(null)}
-              className="w-10 h-10 rounded-full flex items-center justify-center shrink-0"
+              className="absolute left-0 top-0 w-10 h-10 rounded-full flex items-center justify-center shrink-0"
               style={{ background: activeTheme.surface, border: `1px solid ${activeTheme.border}`, color: activeTheme.text }}
               aria-label="Regresar">
               <span style={{ transform: "rotate(180deg)", display: "block" }}><ChevronIcon size={16} /></span>
             </button>
-            <div className="flex-1 min-w-0">
+            <div className="text-center pt-2">
               <div className="text-[11px] f-mono uppercase tracking-wide" style={{ color: activeTheme.textDim }}>Roster</div>
-              <div className="f-display text-xl font-bold uppercase truncate" style={{ color: activeTheme.text }}>{eqRoster?.nombre || "Equipo"}</div>
+              <div className="f-display text-2xl font-bold uppercase truncate" style={{ color: activeTheme.text }}>{eqRoster?.nombre || "Equipo"}</div>
             </div>
           </div>
 
           {estado?.cargando && (
-            <div className="text-xs" style={{ color: activeTheme.textDim }}>Cargando roster…</div>
+            <div className="text-xs text-center" style={{ color: activeTheme.textDim }}>Cargando roster…</div>
           )}
           {estado?.cargado && jugadoresEq.length === 0 && (
-            <div className="text-xs" style={{ color: activeTheme.textDim }}>Este equipo todavía no ha registrado jugadores.</div>
+            <div className="text-xs text-center" style={{ color: activeTheme.textDim }}>Este equipo todavía no ha registrado jugadores.</div>
           )}
           {estado?.cargado && jugadoresEq.length > 0 && (
             <div className="flex flex-col gap-4">
               {[["Ofensiva", ofensivaEq], ["Defensiva", defensivaEq]].map(([titulo, lista]) => (
                 lista.length > 0 && (
                   <div key={titulo}>
-                    <div className="text-[11px] f-mono uppercase tracking-wide mb-2" style={{ color: activeTheme.textDim }}>{titulo}</div>
+                    <div className="text-[11px] f-mono uppercase tracking-wide mb-2 text-center" style={{ color: activeTheme.textDim }}>{titulo}</div>
                     <div className="flex flex-col gap-2">
                       {lista.map((j) => (
-                        <div key={j.id} className="flex items-center gap-3 rounded-lg px-3 py-2"
+                        <div key={j.id} className="flex items-center gap-3 rounded-lg px-3 py-2.5"
                           style={{ background: activeTheme.surface2, border: `1px solid ${activeTheme.border}` }}>
-                          <span className="text-[10px] px-1.5 py-0.5 rounded font-bold f-mono shrink-0"
-                            style={{ background: POSITION_COLORS[j.posicion], color: "#0A0D0C" }}>{j.posicion}</span>
-                          <div className="flex-1 min-w-0 text-sm font-semibold truncate" style={{ color: activeTheme.text }}>{j.nombre}</div>
+                          <div className="w-10 h-10 rounded-full shrink-0 overflow-hidden flex items-center justify-center"
+                            style={{ background: activeTheme.surface, border: `2px solid ${POSITION_COLORS[j.posicion]}` }}>
+                            {j.foto ? <img src={j.foto} alt="" className="w-full h-full object-cover" />
+                              : <span className="text-[10px] f-mono font-bold" style={{ color: POSITION_COLORS[j.posicion] }}>{j.posicion}</span>}
+                          </div>
+                          <div className="flex-1 min-w-0 text-center">
+                            <div className="text-sm font-semibold truncate" style={{ color: activeTheme.text }}>{j.nombre}</div>
+                            <div className="text-xs" style={{ color: activeTheme.textDim }}>{NOMBRES_POSICION[j.posicion]}</div>
+                          </div>
                           <div className="text-sm f-mono font-bold shrink-0" style={{ color: activeTheme.textDim }}>{j.numero}</div>
                         </div>
                       ))}
@@ -2807,7 +2813,13 @@ export default function App() {
                       border: `1px solid ${abierta ? activeTheme.offense + "55" : activeTheme.border}`,
                       boxShadow: activeTheme.shadow,
                     }}>
-                    <span className="f-mono text-sm font-bold uppercase tracking-wide" style={{ color: activeTheme.text }}>{eq.nombre}</span>
+                    <span className="flex items-center gap-3 min-w-0">
+                      <span className="w-8 h-8 rounded-full overflow-hidden shrink-0 flex items-center justify-center"
+                        style={{ background: activeTheme.surface2, border: `1px solid ${activeTheme.border}` }}>
+                        {eq.foto ? <img src={eq.foto} alt="" className="w-full h-full object-cover" /> : null}
+                      </span>
+                      <span className="f-mono text-sm font-bold uppercase tracking-wide truncate" style={{ color: activeTheme.text }}>{eq.nombre}</span>
+                    </span>
                     <span className="flex items-center gap-2 shrink-0">
                       {estado?.cargado && (
                         <span className="text-[11px] f-mono uppercase" style={{ color: activeTheme.textDim }}>
