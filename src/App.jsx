@@ -38,6 +38,7 @@ const THEME = {
   win: "#5C9E72",
   tie: "#8B978F",
   bloqueo: "#C9A227",
+  shadow: "0 3px 10px rgba(0,0,0,0.35)",
 };
 
 const LIGHT_THEME = {
@@ -53,6 +54,7 @@ const LIGHT_THEME = {
   win: "#2F7A4B",
   tie: "#5B6560",
   bloqueo: "#9C7A18",
+  shadow: "0 3px 10px rgba(10,13,12,0.10)",
 };
 
 const uid = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
@@ -85,6 +87,52 @@ function PinIcon({ size = 13 }) {
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" style={{ display: "inline", verticalAlign: "-2px" }}>
       <path d="M12 21s-7-6.1-7-11.5A7 7 0 0 1 19 9.5C19 14.9 12 21 12 21Z" />
       <circle cx="12" cy="9.5" r="2.4" />
+    </svg>
+  );
+}
+function ChevronIcon({ size = 15 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ display: "block" }}>
+      <path d="M9 5l7 7-7 7" />
+    </svg>
+  );
+}
+function CalendarIcon({ size = 14 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ display: "inline", verticalAlign: "-2px" }}>
+      <rect x="3.5" y="5" width="17" height="16" rx="2.5" />
+      <line x1="3.5" y1="10" x2="20.5" y2="10" />
+      <line x1="8" y1="3" x2="8" y2="7" />
+      <line x1="16" y1="3" x2="16" y2="7" />
+    </svg>
+  );
+}
+function RosterIcon({ size = 14 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ display: "inline", verticalAlign: "-2px" }}>
+      <circle cx="12" cy="8" r="3.2" />
+      <path d="M5 20c0-3.9 3.1-7 7-7s7 3.1 7 7" />
+    </svg>
+  );
+}
+function TrophyIcon({ size = 14 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ display: "inline", verticalAlign: "-2px" }}>
+      <path d="M8 4h8v5a4 4 0 0 1-8 0V4Z" />
+      <path d="M8 5H5a2 2 0 0 0 0 4 4 4 0 0 0 3.3 1.9" />
+      <path d="M16 5h3a2 2 0 0 1 0 4 4 4 0 0 1-3.3 1.9" />
+      <line x1="12" y1="13" x2="12" y2="17" />
+      <line x1="9" y1="20" x2="15" y2="20" />
+      <line x1="12" y1="17" x2="12" y2="20" />
+    </svg>
+  );
+}
+function PlaybookIcon({ size = 14 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ display: "inline", verticalAlign: "-2px" }}>
+      <rect x="4" y="3.5" width="16" height="17" rx="2" />
+      <line x1="8" y1="8" x2="16" y2="8" />
+      <path d="M8 13l3 3 5-6" />
     </svg>
   );
 }
@@ -202,6 +250,24 @@ function formatearFecha(fechaStr) {
   const dt = new Date(y, m - 1, d);
   const txt = dt.toLocaleDateString("es-ES", { weekday: "short", day: "numeric", month: "short" });
   return txt.charAt(0).toUpperCase() + txt.slice(1);
+}
+
+/* Versión compacta, sin día de la semana — para subtítulos donde el espacio es limitado */
+function formatearFechaCorta(fechaStr) {
+  if (!fechaStr) return "";
+  const [y, m, d] = fechaStr.split("-").map(Number);
+  if (!y || !m || !d) return fechaStr;
+  const dt = new Date(y, m - 1, d);
+  return dt.toLocaleDateString("es-ES", { day: "numeric", month: "short" });
+}
+
+/* Rango de fechas de una lista de partidos (para el subtítulo de cada jornada) */
+function rangoFechas(items) {
+  const fechas = items.map((i) => i.fecha).filter(Boolean).sort();
+  if (fechas.length === 0) return "";
+  const primera = fechas[0];
+  const ultima = fechas[fechas.length - 1];
+  return primera === ultima ? formatearFechaCorta(primera) : `${formatearFechaCorta(primera)} – ${formatearFechaCorta(ultima)}`;
 }
 
 function formatearHora(horaStr) {
@@ -1147,6 +1213,32 @@ export default function App() {
     return fila ? `${fila.g}-${fila.p}-${fila.e}` : "0-0-0";
   };
 
+  // Próximo partido: para una sesión de equipo, el siguiente juego de ESE equipo (usado en la tarjeta resumen).
+  // Para admin/visitante, el siguiente juego de la liga en general (solo para resaltar la jornada próxima).
+  const hoyInicioDia = new Date();
+  hoyInicioDia.setHours(0, 0, 0, 0);
+  const partidosOrdenadosPorFecha = [...partidosLiga].filter((p) => p.fecha).sort((a, b) => a.fecha.localeCompare(b.fecha));
+  const proximoPartido = sesion && sesion.tipo === "equipo"
+    ? (partidosOrdenadosPorFecha.find((p) => (p.local === equipo || p.visitante === equipo) && new Date(`${p.fecha}T23:59:59`) >= hoyInicioDia) || null)
+    : (partidosOrdenadosPorFecha.find((p) => new Date(`${p.fecha}T23:59:59`) >= hoyInicioDia) || null);
+  const jornadaProxima = proximoPartido ? (proximoPartido.jornada || "Sin jornada") : null;
+
+  // Escudo + nombre + récord de un equipo — reutilizado en la tarjeta resumen y en cada encuentro del calendario
+  const renderLogoEquipo = (nombreEquipo, tamano = "w-16 h-16") => {
+    const foto = fotoDeEquipo(nombreEquipo);
+    return (
+      <div className="flex flex-col items-center gap-1.5 w-20 shrink-0">
+        <div className={`${tamano} rounded-full overflow-hidden flex items-center justify-center`}
+          style={{ background: activeTheme.surface2, border: `1px solid ${activeTheme.border}` }}>
+          {foto ? <img src={foto} alt="" className="w-full h-full object-cover" />
+            : <span className="text-[10px] f-mono font-bold text-center px-1" style={{ color: activeTheme.textDim }}>{nombreEquipo}</span>}
+        </div>
+        <div className="text-xs font-semibold text-center truncate w-full" style={{ color: nombreEquipo === equipo ? activeTheme.offense : activeTheme.text }}>{nombreEquipo}</div>
+        <div className="text-[11px] f-mono" style={{ color: activeTheme.textDim }}>{registroDeEquipo(nombreEquipo)}</div>
+      </div>
+    );
+  };
+
   const abrirEditarPartido = (p) => {
     setModalEditarPartido({
       id: p.id,
@@ -1318,8 +1410,20 @@ export default function App() {
       input, select, textarea { font-size: 16px !important; }
       /* Excepción: el nombre del equipo/liga en el encabezado debe verse grande (text-3xl = 30px), no 16px */
       .header-name-input { font-size: 30px !important; }
+      /* Variantes para nombres largos — el tamaño se ajusta automáticamente según la longitud del texto */
+      .header-name-md { font-size: 23px !important; }
+      .header-name-sm { font-size: 18px !important; }
     `}</style>
   );
+
+  // Elige un tamaño de fuente más chico automáticamente cuando el nombre de la liga/equipo es largo,
+  // así se evita que el encabezado se corte con "..."
+  const claseTituloEncabezado = (texto) => {
+    const len = (texto || "").length;
+    if (len > 22) return "header-name-sm";
+    if (len > 14) return "header-name-md";
+    return "header-name-input";
+  };
 
   const inputStyle = { background: activeTheme.surface2, color: activeTheme.text, border: `1px solid ${activeTheme.border}` };
 
@@ -1503,14 +1607,22 @@ export default function App() {
           )}
           {sesion.tipo === "equipo" ? (
             <input value={equipo} onChange={(e) => actualizarMiEquipo({ nombre: e.target.value })}
-              className="header-name-input f-display text-3xl bg-transparent outline-none w-full font-bold"
+              className={`${claseTituloEncabezado(equipo)} f-display bg-transparent outline-none w-full font-bold`}
               style={{ color: activeTheme.text }} />
           ) : sesion.tipo === "creador" ? (
             <input value={ligaNombre} onChange={(e) => setLigaNombre(e.target.value)}
-              className="header-name-input f-display text-3xl bg-transparent outline-none w-full font-bold"
+              className={`${claseTituloEncabezado(ligaNombre)} f-display bg-transparent outline-none w-full font-bold`}
               style={{ color: activeTheme.text }} />
           ) : (
-            <div className="f-display text-3xl font-bold w-full truncate" style={{ color: activeTheme.text }}>{ligaNombre || "Visitante"}</div>
+            <div className="f-display font-bold w-full leading-tight"
+              style={{
+                color: activeTheme.text,
+                fontSize: (ligaNombre || "Visitante").length > 22 ? 18 : (ligaNombre || "Visitante").length > 14 ? 23 : 30,
+                display: "-webkit-box",
+                WebkitLineClamp: 2,
+                WebkitBoxOrient: "vertical",
+                overflow: "hidden",
+              }}>{ligaNombre || "Visitante"}</div>
           )}
 
           <button onClick={toggleModo}
@@ -1600,6 +1712,7 @@ export default function App() {
           </div>
         )}
         {sesion.tipo !== "equipo" && <div className="mb-5" />}
+        <div style={{ height: 1, background: `linear-gradient(to right, transparent, ${activeTheme.border}, transparent)`, marginBottom: 20, marginTop: -8 }} />
 
         {/* tabs */}
         <div className="flex gap-1 mb-6 p-1 rounded-lg" style={{ background: activeTheme.surface, border: `1px solid ${activeTheme.border}` }}>
@@ -1608,13 +1721,20 @@ export default function App() {
             : sesion.tipo === "creador"
             ? [["calendario", "Calendario"], ["roster", "Roster"], ["liga", "Liga"]]
             : [["calendario", "Calendario"], ["roster", "Roster"], ["liga", "Liga"]]
-          ).map(([key, label]) => (
-            <button key={key} onClick={() => { setTab(key); cerrarEditor(); cerrarVistaJugada(); }}
-              className="flex-1 py-2 rounded-md text-[11px] font-semibold transition"
-              style={{ background: tab === key ? activeTheme.text : "transparent", color: tab === key ? activeTheme.bg : activeTheme.textDim }}>
-              {label}
-            </button>
-          ))}
+          ).map(([key, label]) => {
+            const IconoTab = key === "plantilla" || key === "roster" ? RosterIcon
+              : key === "calendario" ? CalendarIcon
+              : key === "liga" ? TrophyIcon
+              : PlaybookIcon;
+            return (
+              <button key={key} onClick={() => { setTab(key); cerrarEditor(); cerrarVistaJugada(); }}
+                className="flex-1 py-2 rounded-md text-[11px] font-semibold transition flex items-center justify-center gap-1.5"
+                style={{ background: tab === key ? activeTheme.text : "transparent", color: tab === key ? activeTheme.bg : activeTheme.textDim }}>
+                <IconoTab size={13} />
+                {label}
+              </button>
+            );
+          })}
         </div>
 
         {/* ============ TAB PLANTILLA ============ */}
@@ -1977,7 +2097,7 @@ export default function App() {
               {sesion.tipo === "creador" && (
                 <button onClick={abrirModalPartido}
                   className="w-9 h-9 rounded-full flex items-center justify-center text-lg font-bold shrink-0"
-                  style={{ background: activeTheme.text, color: activeTheme.bg }}>+</button>
+                  style={{ background: activeTheme.text, color: activeTheme.bg, boxShadow: activeTheme.shadow }}>+</button>
               )}
             </div>
 
@@ -1993,113 +2113,154 @@ export default function App() {
               </div>
             )}
 
+            {/* -------- tarjeta resumen: próximo partido (solo para la sesión de equipo, muestra SU próximo juego) -------- */}
+            {sesion.tipo === "equipo" && proximoPartido && (
+              <div className="rounded-xl p-5 mb-5"
+                style={{ background: activeTheme.surface, border: `1px solid ${activeTheme.offense}55`, boxShadow: activeTheme.shadow }}>
+                <div className="flex items-center justify-center gap-1.5 mb-3">
+                  <CalendarIcon size={12} />
+                  <span className="text-[10px] f-mono uppercase font-bold tracking-widest" style={{ color: activeTheme.offense }}>Próximo partido</span>
+                </div>
+                {proximoPartido.bye ? (
+                  <div className="flex items-center justify-between gap-1">
+                    {renderLogoEquipo(proximoPartido.local)}
+                    <div className="flex-1 flex flex-col items-center gap-1.5 min-w-0 px-2">
+                      <div className="text-xs f-mono text-center" style={{ color: activeTheme.textDim }}>{formatearFecha(proximoPartido.fecha)}</div>
+                      <div className="f-mono text-xl font-bold text-center mt-1" style={{ color: activeTheme.textDim }}>BYE</div>
+                    </div>
+                    <div className="flex flex-col items-center gap-1.5 w-20 shrink-0">
+                      <div className="w-16 h-16 rounded-full flex items-center justify-center"
+                        style={{ background: activeTheme.surface2, border: `1px dashed ${activeTheme.border}` }}>
+                        <span className="text-sm f-mono font-bold" style={{ color: activeTheme.textDim }}>BYE</span>
+                      </div>
+                      <div className="text-xs font-semibold text-center" style={{ color: activeTheme.textDim }}>Sin rival</div>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <div className="flex items-center justify-between gap-1">
+                      {renderLogoEquipo(proximoPartido.local)}
+                      <div className="flex-1 flex flex-col items-center gap-1.5 min-w-0 px-2">
+                        <div className="text-xs f-mono text-center" style={{ color: activeTheme.textDim }}>{formatearFecha(proximoPartido.fecha)}</div>
+                        {proximoPartido.hora && <div className="text-xs f-mono text-center" style={{ color: activeTheme.textDim }}>{formatearHora(proximoPartido.hora)}</div>}
+                        <div className="f-display text-2xl font-bold text-center" style={{ color: activeTheme.text }}>VS</div>
+                      </div>
+                      {renderLogoEquipo(proximoPartido.visitante)}
+                    </div>
+                    {proximoPartido.lugar && <div className="flex items-center justify-center gap-1 text-xs text-center mt-4" style={{ color: activeTheme.textDim }}><PinIcon />{proximoPartido.lugar}</div>}
+                  </>
+                )}
+              </div>
+            )}
+
             {partidosPorJornada.map((grupo) => {
               const abierta = !!jornadasAbiertas[grupo.jornada];
+              const esProxima = grupo.jornada === jornadaProxima;
+              const subtitulo = rangoFechas(grupo.items);
               return (
                 <div key={grupo.jornada} className="mb-3">
                   <button onClick={() => toggleJornada(grupo.jornada)}
                     className="w-full flex items-center justify-between gap-2 px-4 py-3.5 rounded-xl text-left select-none"
                     style={{
                       background: abierta ? activeTheme.surface2 : activeTheme.surface,
-                      border: `1px solid ${abierta ? activeTheme.offense + "55" : activeTheme.border}`,
+                      border: `1px solid ${abierta || esProxima ? activeTheme.offense + "55" : activeTheme.border}`,
+                      boxShadow: activeTheme.shadow,
                     }}>
-                    <span className="f-mono text-sm font-bold uppercase tracking-wide" style={{ color: activeTheme.text }}>
-                      {grupo.jornada === "Sin jornada" ? "Sin jornada" : `Jornada ${grupo.jornada}`}
+                    <span className="flex flex-col items-start min-w-0">
+                      <span className="flex items-center gap-2">
+                        <span className="f-mono text-sm font-bold uppercase tracking-wide" style={{ color: activeTheme.text }}>
+                          {grupo.jornada === "Sin jornada" ? "Sin jornada" : `Jornada ${grupo.jornada}`}
+                        </span>
+                        {esProxima && (
+                          <span className="text-[9px] f-mono font-bold uppercase px-1.5 py-0.5 rounded"
+                            style={{ background: activeTheme.offense, color: "#1A1200" }}>Próxima</span>
+                        )}
+                      </span>
+                      {subtitulo && (
+                        <span className="text-[11px] f-mono mt-0.5" style={{ color: activeTheme.textDim }}>{subtitulo}</span>
+                      )}
                     </span>
                     <span className="flex items-center gap-2 shrink-0">
                       <span className="text-[11px] f-mono uppercase" style={{ color: activeTheme.textDim }}>
-                        {grupo.items.length} juego{grupo.items.length !== 1 ? "s" : ""}
+                        <span className="font-bold" style={{ color: activeTheme.offense }}>{grupo.items.length}</span> juego{grupo.items.length !== 1 ? "s" : ""}
                       </span>
                       <span style={{
-                        display: "inline-block",
+                        display: "inline-flex",
                         transform: abierta ? "rotate(90deg)" : "rotate(0deg)",
-                        transition: "transform 0.15s",
+                        transition: "transform 0.2s",
                         color: abierta ? activeTheme.offense : activeTheme.textDim,
-                      }}>▸</span>
+                      }}><ChevronIcon /></span>
                     </span>
                   </button>
 
-                  {abierta && (
-                    <div className="flex flex-col gap-3 mt-3">
-                      {grupo.items.map((p) => {
-                        const r = resultadoPartido(p);
-                        const tieneMarcador = p.marcadorLocal !== null && p.marcadorLocal !== undefined && p.marcadorVisitante !== null && p.marcadorVisitante !== undefined;
+                  <div style={{ display: "grid", gridTemplateRows: abierta ? "1fr" : "0fr", transition: "grid-template-rows 0.3s ease" }}>
+                    <div style={{ overflow: "hidden", minHeight: 0 }}>
+                      <div className="flex flex-col gap-3 mt-3">
+                        {grupo.items.map((p) => {
+                          const r = resultadoPartido(p);
+                          const tieneMarcador = p.marcadorLocal !== null && p.marcadorLocal !== undefined && p.marcadorVisitante !== null && p.marcadorVisitante !== undefined;
 
-                        const renderLogo = (nombreEquipo) => {
-                          const foto = fotoDeEquipo(nombreEquipo);
-                          return (
-                            <div className="flex flex-col items-center gap-1.5 w-20 shrink-0">
-                              <div className="w-16 h-16 rounded-full overflow-hidden flex items-center justify-center"
-                                style={{ background: activeTheme.surface2, border: `1px solid ${activeTheme.border}` }}>
-                                {foto ? <img src={foto} alt="" className="w-full h-full object-cover" />
-                                  : <span className="text-[10px] f-mono font-bold text-center px-1" style={{ color: activeTheme.textDim }}>{nombreEquipo}</span>}
+                          if (p.bye) {
+                            return (
+                              <div key={p.id} className="rounded-xl p-5 select-none"
+                                style={{ background: activeTheme.surface, border: `1px solid ${activeTheme.border}`, boxShadow: activeTheme.shadow }}
+                                onMouseDown={() => iniciarPulsacionLarga(p.id)} onMouseUp={cancelarPulsacionLarga} onMouseLeave={cancelarPulsacionLarga}
+                                onTouchStart={() => iniciarPulsacionLarga(p.id)} onTouchEnd={cancelarPulsacionLarga} onTouchCancel={cancelarPulsacionLarga}>
+                                <div className="flex items-center justify-between gap-1">
+                                  {renderLogoEquipo(p.local)}
+
+                                  <div className="flex-1 flex flex-col items-center gap-1.5 min-w-0 px-2">
+                                    <div className="text-xs f-mono text-center" style={{ color: activeTheme.textDim }}>{formatearFecha(p.fecha)}</div>
+                                    <div className="f-mono text-2xl font-bold text-center mt-1" style={{ color: activeTheme.textDim }}>BYE</div>
+                                    <span className="text-[11px] px-2 py-1 rounded font-bold f-mono uppercase mt-0.5"
+                                      style={{ background: activeTheme.surface2, color: activeTheme.textDim, border: `1px solid ${activeTheme.border}` }}>Descanso</span>
+                                  </div>
+
+                                  <div className="flex flex-col items-center gap-1.5 w-20 shrink-0">
+                                    <div className="w-16 h-16 rounded-full flex items-center justify-center"
+                                      style={{ background: activeTheme.surface2, border: `1px dashed ${activeTheme.border}` }}>
+                                      <span className="text-sm f-mono font-bold" style={{ color: activeTheme.textDim }}>BYE</span>
+                                    </div>
+                                    <div className="text-xs font-semibold text-center" style={{ color: activeTheme.textDim }}>Sin rival</div>
+                                  </div>
+                                </div>
                               </div>
-                              <div className="text-xs font-semibold text-center truncate w-full" style={{ color: nombreEquipo === equipo ? activeTheme.offense : activeTheme.text }}>{nombreEquipo}</div>
-                              <div className="text-[11px] f-mono" style={{ color: activeTheme.textDim }}>{registroDeEquipo(nombreEquipo)}</div>
-                            </div>
-                          );
-                        };
+                            );
+                          }
 
-                        if (p.bye) {
                           return (
                             <div key={p.id} className="rounded-xl p-5 select-none"
-                              style={{ background: activeTheme.surface, border: `1px solid ${activeTheme.border}` }}
+                              style={{ background: activeTheme.surface, border: `1px solid ${activeTheme.border}`, boxShadow: activeTheme.shadow }}
                               onMouseDown={() => iniciarPulsacionLarga(p.id)} onMouseUp={cancelarPulsacionLarga} onMouseLeave={cancelarPulsacionLarga}
                               onTouchStart={() => iniciarPulsacionLarga(p.id)} onTouchEnd={cancelarPulsacionLarga} onTouchCancel={cancelarPulsacionLarga}>
                               <div className="flex items-center justify-between gap-1">
-                                {renderLogo(p.local)}
+                                {renderLogoEquipo(p.local)}
+                                <div className="f-mono text-3xl font-bold text-center px-1 shrink-0" style={{ color: tieneMarcador ? activeTheme.text : activeTheme.textDim }}>
+                                  {tieneMarcador ? p.marcadorLocal : "–"}
+                                </div>
 
-                                <div className="flex-1 flex flex-col items-center gap-1.5 min-w-0 px-2">
+                                <div className="flex flex-col items-center gap-1.5 min-w-0 px-2">
                                   <div className="text-xs f-mono text-center" style={{ color: activeTheme.textDim }}>{formatearFecha(p.fecha)}</div>
-                                  <div className="f-mono text-2xl font-bold text-center mt-1" style={{ color: activeTheme.textDim }}>BYE</div>
-                                  <span className="text-[11px] px-2 py-1 rounded font-bold f-mono uppercase mt-0.5"
-                                    style={{ background: activeTheme.surface2, color: activeTheme.textDim, border: `1px solid ${activeTheme.border}` }}>Descanso</span>
+                                  {p.hora && <div className="text-xs f-mono text-center" style={{ color: activeTheme.textDim }}>{formatearHora(p.hora)}</div>}
+                                  {r && (
+                                    <span className="text-[11px] px-2 py-1 rounded font-bold f-mono uppercase mt-0.5"
+                                      style={{ background: colorResultado(r), color: "#0A0D0C" }}>{textoResultado(r)}</span>
+                                  )}
                                 </div>
 
-                                <div className="flex flex-col items-center gap-1.5 w-20 shrink-0">
-                                  <div className="w-16 h-16 rounded-full flex items-center justify-center"
-                                    style={{ background: activeTheme.surface2, border: `1px dashed ${activeTheme.border}` }}>
-                                    <span className="text-sm f-mono font-bold" style={{ color: activeTheme.textDim }}>BYE</span>
-                                  </div>
-                                  <div className="text-xs font-semibold text-center" style={{ color: activeTheme.textDim }}>Sin rival</div>
+                                <div className="f-mono text-3xl font-bold text-center px-1 shrink-0" style={{ color: tieneMarcador ? activeTheme.text : activeTheme.textDim }}>
+                                  {tieneMarcador ? p.marcadorVisitante : "–"}
                                 </div>
+                                {renderLogoEquipo(p.visitante)}
                               </div>
+
+                              {p.lugar && <div className="flex items-center justify-center gap-1 text-xs text-center mt-4" style={{ color: activeTheme.textDim }}><PinIcon />{p.lugar}</div>}
                             </div>
                           );
-                        }
-
-                        return (
-                          <div key={p.id} className="rounded-xl p-5 select-none"
-                            style={{ background: activeTheme.surface, border: `1px solid ${activeTheme.border}` }}
-                            onMouseDown={() => iniciarPulsacionLarga(p.id)} onMouseUp={cancelarPulsacionLarga} onMouseLeave={cancelarPulsacionLarga}
-                            onTouchStart={() => iniciarPulsacionLarga(p.id)} onTouchEnd={cancelarPulsacionLarga} onTouchCancel={cancelarPulsacionLarga}>
-                            <div className="flex items-center justify-between gap-1">
-                              {renderLogo(p.local)}
-                              <div className="f-mono text-3xl font-bold text-center px-1 shrink-0" style={{ color: tieneMarcador ? activeTheme.text : activeTheme.textDim }}>
-                                {tieneMarcador ? p.marcadorLocal : "–"}
-                              </div>
-
-                              <div className="flex flex-col items-center gap-1.5 min-w-0 px-2">
-                                <div className="text-xs f-mono text-center" style={{ color: activeTheme.textDim }}>{formatearFecha(p.fecha)}</div>
-                                {p.hora && <div className="text-xs f-mono text-center" style={{ color: activeTheme.textDim }}>{formatearHora(p.hora)}</div>}
-                                {r && (
-                                  <span className="text-[11px] px-2 py-1 rounded font-bold f-mono uppercase mt-0.5"
-                                    style={{ background: colorResultado(r), color: "#0A0D0C" }}>{textoResultado(r)}</span>
-                                )}
-                              </div>
-
-                              <div className="f-mono text-3xl font-bold text-center px-1 shrink-0" style={{ color: tieneMarcador ? activeTheme.text : activeTheme.textDim }}>
-                                {tieneMarcador ? p.marcadorVisitante : "–"}
-                              </div>
-                              {renderLogo(p.visitante)}
-                            </div>
-
-                            {p.lugar && <div className="flex items-center justify-center gap-1 text-xs text-center mt-4" style={{ color: activeTheme.textDim }}><PinIcon />{p.lugar}</div>}
-                          </div>
-                        );
-                      })}
+                        })}
+                      </div>
                     </div>
-                  )}
+                  </div>
                 </div>
               );
             })}
@@ -2428,25 +2589,27 @@ export default function App() {
                     style={{
                       background: abierta ? activeTheme.surface2 : activeTheme.surface,
                       border: `1px solid ${abierta ? activeTheme.offense + "55" : activeTheme.border}`,
+                      boxShadow: activeTheme.shadow,
                     }}>
                     <span className="f-mono text-sm font-bold uppercase tracking-wide" style={{ color: activeTheme.text }}>{eq.nombre}</span>
                     <span className="flex items-center gap-2 shrink-0">
                       {estado?.cargado && (
                         <span className="text-[11px] f-mono uppercase" style={{ color: activeTheme.textDim }}>
-                          {jugadoresEq.length} jugador{jugadoresEq.length !== 1 ? "es" : ""}
+                          <span className="font-bold" style={{ color: activeTheme.offense }}>{jugadoresEq.length}</span> jugador{jugadoresEq.length !== 1 ? "es" : ""}
                         </span>
                       )}
                       <span style={{
-                        display: "inline-block",
+                        display: "inline-flex",
                         transform: abierta ? "rotate(90deg)" : "rotate(0deg)",
-                        transition: "transform 0.15s",
+                        transition: "transform 0.2s",
                         color: abierta ? activeTheme.offense : activeTheme.textDim,
-                      }}>▸</span>
+                      }}><ChevronIcon /></span>
                     </span>
                   </button>
 
-                  {abierta && (
-                    <div className="mt-3 rounded-xl p-4" style={{ background: activeTheme.surface, border: `1px solid ${activeTheme.border}` }}>
+                  <div style={{ display: "grid", gridTemplateRows: abierta ? "1fr" : "0fr", transition: "grid-template-rows 0.3s ease" }}>
+                    <div style={{ overflow: "hidden", minHeight: 0 }}>
+                    <div className="mt-3 rounded-xl p-4" style={{ background: activeTheme.surface, border: `1px solid ${activeTheme.border}`, boxShadow: activeTheme.shadow }}>
                       {estado?.cargando && (
                         <div className="text-xs" style={{ color: activeTheme.textDim }}>Cargando roster…</div>
                       )}
@@ -2494,7 +2657,8 @@ export default function App() {
                         </div>
                       )}
                     </div>
-                  )}
+                    </div>
+                  </div>
                 </div>
               );
             })}
