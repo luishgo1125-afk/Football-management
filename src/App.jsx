@@ -429,6 +429,7 @@ export default function App() {
   const [partidosLiga, setPartidosLiga] = useState([]); // calendario único de la liga activa (compartido)
   const [fechaLimiteRoster, setFechaLimiteRoster] = useState(""); // fecha límite para que los equipos registren jugadores
   const [ligaFoto, setLigaFoto] = useState(null); // foto de la liga (editable solo por el organizador)
+  const [anotadores, setAnotadores] = useState([]); // máximos anotadores de la liga (compartido): [{id, equipoId, equipoNombre, jugadorId, jugadorNombre, jugadorNumero, jugadorPosicion, jugadorFoto, anotaciones}]
   const [tab, setTab] = useState("plantilla");
   const [errorFoto, setErrorFoto] = useState("");
 
@@ -612,7 +613,7 @@ export default function App() {
     if (!cargado || !ligaId) return;
     (async () => {
       try {
-        await window.storage.set(`liga-datos-${ligaId}`, JSON.stringify({ nombre: ligaNombre, pinCreador, equipos, partidosLiga, fechaLimiteRoster, foto: ligaFoto }), true);
+        await window.storage.set(`liga-datos-${ligaId}`, JSON.stringify({ nombre: ligaNombre, pinCreador, equipos, partidosLiga, fechaLimiteRoster, foto: ligaFoto, anotadores }), true);
         // Mantiene sincronizado el índice liviano (nombre + foto) que se usa en el selector de ligas del login
         const res = await window.storage.get("ligas-indice", true).catch(() => null);
         const lista = res?.value ? JSON.parse(res.value) : [];
@@ -624,7 +625,7 @@ export default function App() {
         }
       } catch (e) { console.error("Error guardando liga", e); }
     })();
-  }, [ligaId, ligaNombre, pinCreador, equipos, partidosLiga, fechaLimiteRoster, ligaFoto, cargado]);
+  }, [ligaId, ligaNombre, pinCreador, equipos, partidosLiga, fechaLimiteRoster, ligaFoto, anotadores, cargado]);
 
   // Guardar mi plantilla/jugadas personales (solo si tengo sesión de equipo).
   // Se guarda como dato COMPARTIDO de la liga (bajo una llave única por equipo) para que
@@ -664,6 +665,7 @@ export default function App() {
       setPartidosLiga(liga.partidosLiga ?? []);
       setFechaLimiteRoster(liga.fechaLimiteRoster ?? "");
       setLigaFoto(liga.foto ?? null);
+      setAnotadores(liga.anotadores ?? []);
       return liga;
     }
     return null;
@@ -721,11 +723,11 @@ export default function App() {
       const nuevaLista = [...lista, { id: nuevoId, nombre: nombreLigaInput.trim(), foto: null }];
       await window.storage.set("ligas-indice", JSON.stringify(nuevaLista), true);
       setLigasIndice(nuevaLista);
-      await window.storage.set(`liga-datos-${nuevoId}`, JSON.stringify({ nombre: nombreLigaInput.trim(), pinCreador: pinCreadorInput.trim(), equipos: [], partidosLiga: [], fechaLimiteRoster: "", foto: null }), true);
+      await window.storage.set(`liga-datos-${nuevoId}`, JSON.stringify({ nombre: nombreLigaInput.trim(), pinCreador: pinCreadorInput.trim(), equipos: [], partidosLiga: [], fechaLimiteRoster: "", foto: null, anotadores: [] }), true);
       setLigaId(nuevoId);
       setLigaNombre(nombreLigaInput.trim());
       setPinCreador(pinCreadorInput.trim());
-      setEquipos([]); setPartidosLiga([]); setFechaLimiteRoster(""); setLigaFoto(null);
+      setEquipos([]); setPartidosLiga([]); setFechaLimiteRoster(""); setLigaFoto(null); setAnotadores([]);
       const s = { tipo: "creador", ligaId: nuevoId };
       setSesion(s);
       setTab("calendario");
@@ -793,7 +795,7 @@ export default function App() {
     setMenuEquiposAbierto(false);
     setJugadores([]); setJugadas([]);
     setDatosEquipoCargados(false);
-    setLigaId(null); setLigaNombre(""); setPinCreador(""); setEquipos([]); setPartidosLiga([]); setFechaLimiteRoster(""); setLigaFoto(null);
+    setLigaId(null); setLigaNombre(""); setPinCreador(""); setEquipos([]); setPartidosLiga([]); setFechaLimiteRoster(""); setLigaFoto(null); setAnotadores([]);
     setLigasIndice(null); setLigaElegida(null);
     setPantallaLogin("menu"); setContextoLogin(null);
     setNombreLigaInput(""); setPinCreadorInput(""); setPinEquipoInput(""); setErrorLogin("");
@@ -1254,9 +1256,56 @@ export default function App() {
           local: p.local === modalEquipo.nombreViejo ? nombreNuevo : p.local,
           visitante: p.visitante === modalEquipo.nombreViejo ? nombreNuevo : p.visitante,
         })));
+        setAnotadores((as) => as.map((a) => (a.equipoNombre === modalEquipo.nombreViejo ? { ...a, equipoNombre: nombreNuevo } : a)));
       }
     }
     setModalEquipo(null);
+  };
+
+  /* ---------- liga: sub-tab (posiciones / estadísticas) y máximos anotadores ---------- */
+  const [ligaSubTab, setLigaSubTab] = useState("posiciones"); // 'posiciones' | 'estadisticas'
+  const [modalAnotador, setModalAnotador] = useState(null); // { paso: 'equipo' } | { paso: 'jugador', equipoId, equipoNombre }
+  // Qué sección de Estadísticas está activa dentro de Liga (0 ofensiva, 1 defensiva, 2 anotadores)
+  const [statsSlide, setStatsSlide] = useState(0);
+
+  const filasLigaConJuegos = filasLiga.filter((f) => (f.g + f.p + f.e) > 0);
+  const mejorOfensiva = [...filasLigaConJuegos].sort((a, b) => b.pf - a.pf);
+  const mejorDefensiva = [...filasLigaConJuegos].sort((a, b) => a.pc - b.pc);
+  const anotadoresOrdenados = [...anotadores].sort((a, b) => (b.anotaciones || 0) - (a.anotaciones || 0));
+
+  const abrirModalAnotador = () => {
+    setModalAnotador({ paso: "equipo" });
+    equipos.forEach((eq) => { if (!rostersEquipos[eq.id]) cargarRosterEquipo(eq.id); });
+  };
+  const cerrarModalAnotador = () => setModalAnotador(null);
+  const elegirEquipoAnotador = (eq) => {
+    if (!rostersEquipos[eq.id]) cargarRosterEquipo(eq.id);
+    setModalAnotador({ paso: "jugador", equipoId: eq.id, equipoNombre: eq.nombre });
+  };
+  const agregarAnotador = (jugador) => {
+    setAnotadores((as) => {
+      if (as.some((a) => a.jugadorId === jugador.id)) return as;
+      return [...as, {
+        id: uid(),
+        equipoId: modalAnotador.equipoId,
+        equipoNombre: modalAnotador.equipoNombre,
+        jugadorId: jugador.id,
+        jugadorNombre: jugador.nombre,
+        jugadorNumero: jugador.numero,
+        jugadorPosicion: jugador.posicion,
+        jugadorFoto: jugador.foto || null,
+        anotaciones: 0,
+      }];
+    });
+    setModalAnotador(null);
+  };
+  const sumarAnotacion = (id) => setAnotadores((as) => as.map((a) => (a.id === id ? { ...a, anotaciones: (a.anotaciones || 0) + 1 } : a)));
+  const restarAnotacion = (id) => setAnotadores((as) => as.map((a) => (a.id === id ? { ...a, anotaciones: Math.max(0, (a.anotaciones || 0) - 1) } : a)));
+  const eliminarAnotador = (id) => {
+    const a = anotadores.find((x) => x.id === id);
+    pedirConfirmacion("Quitar anotador", `¿Quitar a ${a?.jugadorNombre || "este jugador"} de la tabla de máximos anotadores?`, () => {
+      setAnotadores((as) => as.filter((x) => x.id !== id));
+    });
   };
 
   const fuentes = (
@@ -1555,7 +1604,7 @@ export default function App() {
         {/* tabs */}
         <div className="flex gap-1 mb-6 p-1 rounded-lg" style={{ background: activeTheme.surface, border: `1px solid ${activeTheme.border}` }}>
           {(sesion.tipo === "equipo"
-            ? [["plantilla", "Roster"], ["jugadas", "Playbook"], ["calendario", "Calendario"], ["liga", "Liga"]]
+            ? [["plantilla", "Roster"], ["calendario", "Calendario"], ["liga", "Liga"], ["jugadas", "Playbook"]]
             : sesion.tipo === "creador"
             ? [["calendario", "Calendario"], ["roster", "Roster"], ["liga", "Liga"]]
             : [["calendario", "Calendario"], ["roster", "Roster"], ["liga", "Liga"]]
@@ -2057,41 +2106,282 @@ export default function App() {
           </div>
         )}
 
-        {/* ============ TAB LIGA (tabla + equipos) ============ */}
+        {/* ============ TAB LIGA (tabla + estadísticas + equipos) ============ */}
         {tab === "liga" && (
           <div>
-            <div className="f-display text-lg font-bold uppercase mb-4" style={{ color: activeTheme.text }}>Tabla de posiciones</div>
-
-            <div className="rounded-xl overflow-hidden mb-6" style={{ background: activeTheme.surface, border: `1px solid ${activeTheme.border}` }}>
-              <table className="w-full text-xs">
-                <thead>
-                  <tr style={{ borderBottom: `1px solid ${activeTheme.border}` }}>
-                    <th className="text-center py-2 px-2 f-mono uppercase" style={{ color: activeTheme.textDim }}>#</th>
-                    <th className="text-left py-2 px-2 f-mono uppercase" style={{ color: activeTheme.textDim }}>Equipo</th>
-                    <th className="text-center py-2 px-1 f-mono uppercase" style={{ color: activeTheme.textDim }}>PJ</th>
-                    <th className="text-center py-2 px-1 f-mono uppercase" style={{ color: activeTheme.textDim }}>G</th>
-                    <th className="text-center py-2 px-1 f-mono uppercase" style={{ color: activeTheme.textDim }}>P</th>
-                    <th className="text-center py-2 px-1 f-mono uppercase" style={{ color: activeTheme.textDim }}>E</th>
-                    <th className="text-center py-2 px-1 f-mono uppercase" style={{ color: activeTheme.textDim }}>DIF</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filasLiga.map((eq, idx) => (
-                    <tr key={eq.id} style={{ borderBottom: `1px solid ${activeTheme.border}`, background: eq.esPropio ? activeTheme.surface2 : "transparent" }}>
-                      <td className="text-center py-2 px-2 f-mono font-bold" style={{ color: activeTheme.textDim }}>{idx + 1}</td>
-                      <td className="py-2 px-2 font-semibold truncate max-w-[110px]" style={{ color: eq.esPropio ? activeTheme.offense : activeTheme.text }}>{eq.nombre}</td>
-                      <td className="text-center py-2 px-1 f-mono" style={{ color: activeTheme.text }}>{eq.g + eq.p + eq.e}</td>
-                      <td className="text-center py-2 px-1 f-mono" style={{ color: activeTheme.win }}>{eq.g}</td>
-                      <td className="text-center py-2 px-1 f-mono" style={{ color: activeTheme.danger }}>{eq.p}</td>
-                      <td className="text-center py-2 px-1 f-mono" style={{ color: activeTheme.textDim }}>{eq.e}</td>
-                      <td className="text-center py-2 px-1 f-mono" style={{ color: activeTheme.text }}>{eq.pf - eq.pc > 0 ? "+" : ""}{eq.pf - eq.pc}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            <div className="flex gap-1 mb-5 p-1 rounded-lg" style={{ background: activeTheme.surface, border: `1px solid ${activeTheme.border}` }}>
+              {[["posiciones", "Posiciones"], ["estadisticas", "Estadísticas"]].map(([key, label]) => (
+                <button key={key} onClick={() => setLigaSubTab(key)}
+                  className="flex-1 py-2 rounded-md text-[11px] font-semibold transition"
+                  style={{ background: ligaSubTab === key ? activeTheme.text : "transparent", color: ligaSubTab === key ? activeTheme.bg : activeTheme.textDim }}>
+                  {label}
+                </button>
+              ))}
             </div>
-            <div className="text-[11px]" style={{ color: activeTheme.textDim }}>
-              La tabla se calcula automáticamente a partir de los marcadores guardados en el Calendario. Los juegos BYE no se contabilizan.
+
+            {ligaSubTab === "posiciones" && (
+              <div>
+                <div className="f-display text-lg font-bold uppercase mb-4" style={{ color: activeTheme.text }}>Tabla de posiciones</div>
+
+                <div className="rounded-xl overflow-hidden mb-6" style={{ background: activeTheme.surface, border: `1px solid ${activeTheme.border}` }}>
+                  <table className="w-full text-xs">
+                    <thead>
+                      <tr style={{ borderBottom: `1px solid ${activeTheme.border}` }}>
+                        <th className="text-center py-2 px-2 f-mono uppercase" style={{ color: activeTheme.textDim }}>#</th>
+                        <th className="text-center py-2 px-2 f-mono uppercase" style={{ color: activeTheme.textDim }}>Equipo</th>
+                        <th className="text-center py-2 px-1 f-mono uppercase" style={{ color: activeTheme.textDim }}>PJ</th>
+                        <th className="text-center py-2 px-1 f-mono uppercase" style={{ color: activeTheme.textDim }}>G</th>
+                        <th className="text-center py-2 px-1 f-mono uppercase" style={{ color: activeTheme.textDim }}>P</th>
+                        <th className="text-center py-2 px-1 f-mono uppercase" style={{ color: activeTheme.textDim }}>E</th>
+                        <th className="text-center py-2 px-1 f-mono uppercase" style={{ color: activeTheme.textDim }}>DIF</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filasLiga.map((eq, idx) => (
+                        <tr key={eq.id} style={{ borderBottom: `1px solid ${activeTheme.border}`, background: eq.esPropio ? activeTheme.surface2 : "transparent" }}>
+                          <td className="text-center py-2 px-2 f-mono font-bold" style={{ color: activeTheme.textDim }}>{idx + 1}</td>
+                          <td className="text-center py-2 px-2 font-semibold truncate max-w-[110px]" style={{ color: eq.esPropio ? activeTheme.offense : activeTheme.text }}>{eq.nombre}</td>
+                          <td className="text-center py-2 px-1 f-mono" style={{ color: activeTheme.text }}>{eq.g + eq.p + eq.e}</td>
+                          <td className="text-center py-2 px-1 f-mono" style={{ color: activeTheme.win }}>{eq.g}</td>
+                          <td className="text-center py-2 px-1 f-mono" style={{ color: activeTheme.danger }}>{eq.p}</td>
+                          <td className="text-center py-2 px-1 f-mono" style={{ color: activeTheme.textDim }}>{eq.e}</td>
+                          <td className="text-center py-2 px-1 f-mono" style={{ color: activeTheme.text }}>{eq.pf - eq.pc > 0 ? "+" : ""}{eq.pf - eq.pc}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                <div className="text-[11px]" style={{ color: activeTheme.textDim }}>
+                  La tabla se calcula automáticamente a partir de los marcadores guardados en el Calendario. Los juegos BYE no se contabilizan.
+                </div>
+              </div>
+            )}
+
+            {ligaSubTab === "estadisticas" && (
+              <div>
+                {/* Selector de sección — cambia el contenido sin deslizar */}
+                <div className="flex items-center justify-center gap-2 mb-3">
+                  {["Ofensiva", "Defensa", "Anotadores"].map((label, i) => (
+                    <button key={label} onClick={() => setStatsSlide(i)}
+                      className="px-3 py-1 rounded-full text-[10px] f-mono uppercase font-bold tracking-wide"
+                      style={{
+                        background: statsSlide === i ? activeTheme.text : activeTheme.surface,
+                        color: statsSlide === i ? activeTheme.bg : activeTheme.textDim,
+                        border: `1px solid ${statsSlide === i ? activeTheme.text : activeTheme.border}`,
+                      }}>{label}</button>
+                  ))}
+                </div>
+
+                {/* -------- mejor ofensiva -------- */}
+                {statsSlide === 0 && (
+                  <div>
+                    <div className="f-display text-base font-bold uppercase mb-2 text-center" style={{ color: activeTheme.text }}>Mejor ofensiva</div>
+                    <div className="rounded-xl overflow-hidden" style={{ background: activeTheme.surface, border: `1px solid ${activeTheme.border}` }}>
+                      {mejorOfensiva.length === 0 && (
+                        <div className="text-xs p-4 text-center" style={{ color: activeTheme.textDim }}>Sin datos todavía — captura marcadores en el Calendario.</div>
+                      )}
+                      {mejorOfensiva.length > 0 && (
+                        <div className="overflow-y-auto" style={{ maxHeight: "56vh" }}>
+                          <table className="w-full text-xs">
+                            <thead>
+                              <tr style={{ borderBottom: `1px solid ${activeTheme.border}` }}>
+                                <th className="text-center py-1.5 px-2 f-mono uppercase" style={{ color: activeTheme.textDim, background: activeTheme.surface, position: "sticky", top: 0 }}>#</th>
+                                <th className="text-center py-1.5 px-2 f-mono uppercase" style={{ color: activeTheme.textDim, background: activeTheme.surface, position: "sticky", top: 0 }}>Equipo</th>
+                                <th className="text-center py-1.5 px-1 f-mono uppercase" style={{ color: activeTheme.textDim, background: activeTheme.surface, position: "sticky", top: 0 }}>PJ</th>
+                                <th className="text-center py-1.5 px-1 f-mono uppercase" style={{ color: activeTheme.textDim, background: activeTheme.surface, position: "sticky", top: 0 }}>PF</th>
+                                <th className="text-center py-1.5 px-1 f-mono uppercase" style={{ color: activeTheme.textDim, background: activeTheme.surface, position: "sticky", top: 0 }}>Prom.</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {mejorOfensiva.map((eq, idx) => {
+                                const pj = eq.g + eq.p + eq.e;
+                                return (
+                                  <tr key={eq.id} style={{ borderBottom: `1px solid ${activeTheme.border}` }}>
+                                    <td className="text-center py-1.5 px-2 f-mono font-bold" style={{ color: idx === 0 ? activeTheme.offense : activeTheme.textDim }}>{idx + 1}</td>
+                                    <td className="text-center py-1.5 px-2 font-semibold" style={{ color: activeTheme.text }}>{eq.nombre}</td>
+                                    <td className="text-center py-1.5 px-1 f-mono" style={{ color: activeTheme.textDim }}>{pj}</td>
+                                    <td className="text-center py-1.5 px-1 f-mono font-bold" style={{ color: activeTheme.text }}>{eq.pf}</td>
+                                    <td className="text-center py-1.5 px-1 f-mono" style={{ color: activeTheme.textDim }}>{(eq.pf / pj).toFixed(1)}</td>
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* -------- mejor defensa -------- */}
+                {statsSlide === 1 && (
+                  <div>
+                    <div className="f-display text-base font-bold uppercase mb-2 text-center" style={{ color: activeTheme.text }}>Mejor defensa</div>
+                    <div className="rounded-xl overflow-hidden" style={{ background: activeTheme.surface, border: `1px solid ${activeTheme.border}` }}>
+                      {mejorDefensiva.length === 0 && (
+                        <div className="text-xs p-4 text-center" style={{ color: activeTheme.textDim }}>Sin datos todavía — captura marcadores en el Calendario.</div>
+                      )}
+                      {mejorDefensiva.length > 0 && (
+                        <div className="overflow-y-auto" style={{ maxHeight: "56vh" }}>
+                          <table className="w-full text-xs">
+                            <thead>
+                              <tr style={{ borderBottom: `1px solid ${activeTheme.border}` }}>
+                                <th className="text-center py-1.5 px-2 f-mono uppercase" style={{ color: activeTheme.textDim, background: activeTheme.surface, position: "sticky", top: 0 }}>#</th>
+                                <th className="text-center py-1.5 px-2 f-mono uppercase" style={{ color: activeTheme.textDim, background: activeTheme.surface, position: "sticky", top: 0 }}>Equipo</th>
+                                <th className="text-center py-1.5 px-1 f-mono uppercase" style={{ color: activeTheme.textDim, background: activeTheme.surface, position: "sticky", top: 0 }}>PJ</th>
+                                <th className="text-center py-1.5 px-1 f-mono uppercase" style={{ color: activeTheme.textDim, background: activeTheme.surface, position: "sticky", top: 0 }}>PC</th>
+                                <th className="text-center py-1.5 px-1 f-mono uppercase" style={{ color: activeTheme.textDim, background: activeTheme.surface, position: "sticky", top: 0 }}>Prom.</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {mejorDefensiva.map((eq, idx) => {
+                                const pj = eq.g + eq.p + eq.e;
+                                return (
+                                  <tr key={eq.id} style={{ borderBottom: `1px solid ${activeTheme.border}` }}>
+                                    <td className="text-center py-1.5 px-2 f-mono font-bold" style={{ color: idx === 0 ? activeTheme.defense : activeTheme.textDim }}>{idx + 1}</td>
+                                    <td className="text-center py-1.5 px-2 font-semibold" style={{ color: activeTheme.text }}>{eq.nombre}</td>
+                                    <td className="text-center py-1.5 px-1 f-mono" style={{ color: activeTheme.textDim }}>{pj}</td>
+                                    <td className="text-center py-1.5 px-1 f-mono font-bold" style={{ color: activeTheme.text }}>{eq.pc}</td>
+                                    <td className="text-center py-1.5 px-1 f-mono" style={{ color: activeTheme.textDim }}>{(eq.pc / pj).toFixed(1)}</td>
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* -------- máximos anotadores -------- */}
+                {statsSlide === 2 && (
+                  <div>
+                    <div className="relative mb-2">
+                      <div className="f-display text-base font-bold uppercase text-center" style={{ color: activeTheme.text }}>Máximos anotadores</div>
+                      {sesion.tipo === "creador" && (
+                        <button onClick={abrirModalAnotador}
+                          className="absolute right-0 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full flex items-center justify-center text-base font-bold shrink-0"
+                          style={{ background: activeTheme.text, color: activeTheme.bg }}>+</button>
+                      )}
+                    </div>
+                    <div className="rounded-xl overflow-hidden mb-2" style={{ background: activeTheme.surface, border: `1px solid ${activeTheme.border}` }}>
+                      {anotadoresOrdenados.length === 0 && (
+                        <div className="text-xs p-4 text-center" style={{ color: activeTheme.textDim }}>
+                          {sesion.tipo === "creador" ? "Toca + para agregar jugadores a la tabla de anotadores." : "Todavía no hay anotadores registrados."}
+                        </div>
+                      )}
+                      {anotadoresOrdenados.length > 0 && (
+                        <div className="overflow-y-auto" style={{ maxHeight: "56vh" }}>
+                          {anotadoresOrdenados.map((a, idx) => (
+                            <div key={a.id}
+                              onDoubleClick={() => { if (sesion.tipo === "creador") sumarAnotacion(a.id); }}
+                              className="flex items-center gap-2.5 px-3 py-2"
+                              style={{ borderBottom: idx < anotadoresOrdenados.length - 1 ? `1px solid ${activeTheme.border}` : "none", cursor: sesion.tipo === "creador" ? "pointer" : "default" }}>
+                              <div className="w-5 text-center f-mono font-bold text-xs shrink-0" style={{ color: idx === 0 ? activeTheme.offense : activeTheme.textDim }}>{idx + 1}</div>
+                              <div className="w-8 h-8 rounded-full shrink-0 overflow-hidden flex items-center justify-center"
+                                style={{ background: activeTheme.surface2, border: `2px solid ${POSITION_COLORS[a.jugadorPosicion] || activeTheme.border}` }}>
+                                {a.jugadorFoto ? <img src={a.jugadorFoto} alt="" className="w-full h-full object-cover" />
+                                  : <span className="text-[9px] f-mono font-bold" style={{ color: POSITION_COLORS[a.jugadorPosicion] || activeTheme.textDim }}>{a.jugadorPosicion}</span>}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <div className="text-sm font-semibold truncate" style={{ color: activeTheme.text }}>{a.jugadorNombre}</div>
+                                <div className="text-[10px] truncate" style={{ color: activeTheme.textDim }}>{a.equipoNombre} · {a.jugadorPosicion} · #{a.jugadorNumero}</div>
+                              </div>
+                              <div className="f-mono text-base font-bold shrink-0" style={{ color: activeTheme.text }}>{a.anotaciones || 0}</div>
+                              {sesion.tipo === "creador" && (
+                                <div className="flex items-center gap-1 shrink-0">
+                                  <button onClick={(e) => { e.stopPropagation(); restarAnotacion(a.id); }}
+                                    className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold"
+                                    style={{ background: activeTheme.surface2, color: activeTheme.text }}>−</button>
+                                  <button onClick={(e) => { e.stopPropagation(); sumarAnotacion(a.id); }}
+                                    className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold"
+                                    style={{ background: activeTheme.surface2, color: activeTheme.text }}>+</button>
+                                  <button onClick={(e) => { e.stopPropagation(); eliminarAnotador(a.id); }}
+                                    className="text-xs px-1.5 shrink-0" style={{ color: activeTheme.danger }}>✕</button>
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                    {sesion.tipo === "creador" && anotadoresOrdenados.length > 0 && (
+                      <div className="text-[11px] text-center" style={{ color: activeTheme.textDim }}>Doble click sobre un jugador para sumarle una anotación.</div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ============ MODAL: AGREGAR ANOTADOR (elegir equipo → elegir jugador) ============ */}
+        {modalAnotador && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
+            style={{ background: "rgba(6,8,7,0.75)" }} onClick={cerrarModalAnotador}>
+            <div className="w-full max-w-sm rounded-2xl p-5 overflow-hidden max-h-[80vh] flex flex-col"
+              style={{ background: activeTheme.surface, border: `1px solid ${activeTheme.border}` }}
+              onClick={(e) => e.stopPropagation()}>
+              {modalAnotador.paso === "equipo" ? (
+                <>
+                  <div className="text-[11px] f-mono mb-3 uppercase tracking-wide" style={{ color: activeTheme.textDim }}>Elige el equipo</div>
+                  <div className="flex flex-col gap-2 overflow-y-auto">
+                    {equipos.length === 0 && (
+                      <div className="text-xs" style={{ color: activeTheme.textDim }}>Todavía no hay equipos en la liga.</div>
+                    )}
+                    {equipos.map((eq) => (
+                      <button key={eq.id} onClick={() => elegirEquipoAnotador(eq)}
+                        className="w-full flex items-center gap-3 text-left rounded-lg px-3 py-2.5"
+                        style={{ background: activeTheme.surface2, border: `1px solid ${activeTheme.border}` }}>
+                        <div className="w-8 h-8 rounded-full overflow-hidden shrink-0 flex items-center justify-center"
+                          style={{ background: activeTheme.surface, border: `1px solid ${activeTheme.border}` }}>
+                          {eq.foto ? <img src={eq.foto} alt="" className="w-full h-full object-cover" /> : null}
+                        </div>
+                        <span className="flex-1 text-sm font-semibold truncate" style={{ color: activeTheme.text }}>{eq.nombre}</span>
+                      </button>
+                    ))}
+                  </div>
+                  <button onClick={cerrarModalAnotador} className="w-full py-3 rounded-lg font-semibold text-sm mt-4"
+                    style={{ background: activeTheme.surface2, color: activeTheme.text, border: `1px solid ${activeTheme.border}` }}>Cancelar</button>
+                </>
+              ) : (
+                <>
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="text-[11px] f-mono uppercase tracking-wide" style={{ color: activeTheme.textDim }}>{modalAnotador.equipoNombre} — elige el jugador</div>
+                    <button onClick={() => setModalAnotador({ paso: "equipo" })} className="text-xs" style={{ color: activeTheme.textDim }}>Atrás</button>
+                  </div>
+                  <div className="flex flex-col gap-2 overflow-y-auto">
+                    {rostersEquipos[modalAnotador.equipoId]?.cargando && (
+                      <div className="text-xs" style={{ color: activeTheme.textDim }}>Cargando roster…</div>
+                    )}
+                    {rostersEquipos[modalAnotador.equipoId]?.cargado && (rostersEquipos[modalAnotador.equipoId]?.jugadores || []).length === 0 && (
+                      <div className="text-xs" style={{ color: activeTheme.textDim }}>Este equipo todavía no ha registrado jugadores.</div>
+                    )}
+                    {(rostersEquipos[modalAnotador.equipoId]?.jugadores || []).map((j) => {
+                      const yaAgregado = anotadores.some((a) => a.jugadorId === j.id);
+                      return (
+                        <button key={j.id} onClick={() => !yaAgregado && agregarAnotador(j)} disabled={yaAgregado}
+                          className="w-full flex items-center gap-3 text-left rounded-lg px-3 py-2.5"
+                          style={{ background: activeTheme.surface2, border: `1px solid ${activeTheme.border}`, opacity: yaAgregado ? 0.5 : 1 }}>
+                          <div className="w-8 h-8 rounded-full shrink-0 overflow-hidden flex items-center justify-center"
+                            style={{ background: activeTheme.surface, border: `2px solid ${POSITION_COLORS[j.posicion]}` }}>
+                            {j.foto ? <img src={j.foto} alt="" className="w-full h-full object-cover" />
+                              : <span className="text-[10px] f-mono font-bold" style={{ color: POSITION_COLORS[j.posicion] }}>{j.posicion}</span>}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="text-sm font-semibold truncate" style={{ color: activeTheme.text }}>{j.nombre}</div>
+                            <div className="text-[11px]" style={{ color: activeTheme.textDim }}>{j.posicion} · #{j.numero}</div>
+                          </div>
+                          {yaAgregado && <span className="text-[10px] f-mono uppercase" style={{ color: activeTheme.textDim }}>Ya agregado</span>}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <button onClick={cerrarModalAnotador} className="w-full py-3 rounded-lg font-semibold text-sm mt-4"
+                    style={{ background: activeTheme.surface2, color: activeTheme.text, border: `1px solid ${activeTheme.border}` }}>Cancelar</button>
+                </>
+              )}
             </div>
           </div>
         )}
