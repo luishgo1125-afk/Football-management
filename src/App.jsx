@@ -1670,7 +1670,7 @@ export default function App() {
         style={{ color: !nombreEquipo ? activeTheme.textDim : (nombreEquipo === equipo ? activeTheme.offense : activeTheme.text) }}>
         {nombreEquipo || "Por definir"}
       </div>
-      <div className="text-[11px] f-mono" style={{ color: activeTheme.textDim }}>{seed ? `Semilla ${seed}` : "—"}</div>
+      <div className="text-[11px] f-mono" style={{ color: activeTheme.textDim }}>{seed ? `Sembrado ${seed}` : "—"}</div>
     </div>
   );
 
@@ -3926,7 +3926,7 @@ export default function App() {
               onClick={(e) => e.stopPropagation()}>
               <div className="text-[11px] f-mono mb-2 uppercase tracking-wide" style={{ color: activeTheme.textDim }}>Formato de playoffs</div>
               <div className="text-xs mb-4" style={{ color: activeTheme.textDim }}>
-                Elige cuántos equipos clasifican según la tabla de posiciones. Al guardar se arma el bracket con la semilla 1 (mejor lugar) contra la última semilla clasificada, y así sucesivamente.
+                Elige cuántos equipos clasifican según la tabla de posiciones. Al guardar se arma el bracket con el Sembrado 1 (mejor lugar) contra el ultimo clasificado, y así sucesivamente.
               </div>
               <div className="flex flex-col gap-2 mb-2">
                 {FORMATOS_PLAYOFFS.map((f) => (
