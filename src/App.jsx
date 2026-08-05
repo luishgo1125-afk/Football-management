@@ -533,6 +533,75 @@ function calcularTablaLiga(partidosLiga, equipoPropio, criteriosDesempate = CRIT
     });
 }
 
+/* ============================== PLAYOFFS ============================== */
+
+/* Formatos de playoffs disponibles. `equipos` = cuántos clasifican de la tabla (semilla 1 = mejor lugar). */
+const FORMATOS_PLAYOFFS = [
+  { id: "final", label: "Final directa", equipos: 2, rondas: ["Final"] },
+  { id: "semifinal", label: "Semifinales", equipos: 4, rondas: ["Semifinal", "Final"] },
+  { id: "cuartos", label: "Cuartos de final", equipos: 8, rondas: ["Cuartos de Final", "Semifinal", "Final"] },
+];
+
+/* Arma la primera ronda con semilla estándar (1 vs. última, 2 vs. penúltima, ...) a partir de la tabla,
+   y deja las rondas siguientes vacías ("por definir") listas para irse llenando con los ganadores. */
+function generarBracketPlayoffs(formatoId, filasLiga) {
+  const formato = FORMATOS_PLAYOFFS.find((f) => f.id === formatoId);
+  if (!formato) return null;
+  const clasificados = filasLiga.slice(0, formato.equipos);
+  const primeraRonda = [];
+  for (let i = 0; i < Math.ceil(formato.equipos / 2); i++) {
+    const alto = clasificados[i];
+    const bajo = clasificados[formato.equipos - 1 - i];
+    primeraRonda.push({
+      id: uid(),
+      equipoA: alto ? alto.nombre : null, seedA: alto ? i + 1 : null,
+      equipoB: (bajo && bajo !== alto) ? bajo.nombre : null, seedB: (bajo && bajo !== alto) ? formato.equipos - i : null,
+      marcadorA: "", marcadorB: "",
+    });
+  }
+  const rondas = [primeraRonda];
+  let numPartidosAnterior = primeraRonda.length;
+  for (let r = 1; r < formato.rondas.length; r++) {
+    const numPartidos = Math.max(1, Math.ceil(numPartidosAnterior / 2));
+    rondas.push(Array.from({ length: numPartidos }, () => ({
+      id: uid(), equipoA: null, seedA: null, equipoB: null, seedB: null, marcadorA: "", marcadorB: "",
+    })));
+    numPartidosAnterior = numPartidos;
+  }
+  return { formato: formatoId, rondas };
+}
+
+/* El ganador de un cruce solo se determina si ambos marcadores están capturados y no hay empate */
+function ganadorDeCruce(p) {
+  if (!p.equipoA || !p.equipoB) return null;
+  if (p.marcadorA === "" || p.marcadorB === "" || p.marcadorA == null || p.marcadorB == null) return null;
+  const a = Number(p.marcadorA), b = Number(p.marcadorB);
+  if (Number.isNaN(a) || Number.isNaN(b) || a === b) return null;
+  return a > b ? { nombre: p.equipoA, seed: p.seedA } : { nombre: p.equipoB, seed: p.seedB };
+}
+
+/* Propaga los ganadores de cada ronda hacia los cruces (todavía vacíos) de la ronda siguiente */
+function avanzarGanadoresBracket(bracket) {
+  if (!bracket) return bracket;
+  const rondas = bracket.rondas.map((r) => r.map((p) => ({ ...p })));
+  for (let r = 0; r < rondas.length - 1; r++) {
+    for (let i = 0; i < rondas[r].length; i++) {
+      const ganador = ganadorDeCruce(rondas[r][i]);
+      const destino = rondas[r + 1][Math.floor(i / 2)];
+      if (!destino) continue;
+      if (i % 2 === 0) { destino.equipoA = ganador?.nombre ?? null; destino.seedA = ganador?.seed ?? null; }
+      else { destino.equipoB = ganador?.nombre ?? null; destino.seedB = ganador?.seed ?? null; }
+    }
+  }
+  return { ...bracket, rondas };
+}
+
+/* ¿El bracket ya tiene algún resultado capturado? (para avisar antes de sobrescribirlo) */
+function bracketTieneResultados(bracket) {
+  if (!bracket) return false;
+  return bracket.rondas.some((r) => r.some((p) => p.marcadorA !== "" || p.marcadorB !== ""));
+}
+
 /* Determina qué tipo de asignación le corresponde a un jugador al iniciar un trazo */
 function tipoAsignacionPara(token, lado, coberturaTipo) {
   if (lado === "ofensiva") {
@@ -724,6 +793,8 @@ export default function App() {
   const [fechaLimiteRoster, setFechaLimiteRoster] = useState(""); // fecha límite para que los equipos registren jugadores
   const [ligaFoto, setLigaFoto] = useState(null); // foto de la liga (editable solo por el organizador)
   const [criteriosDesempate, setCriteriosDesempate] = useState(CRITERIOS_DESEMPATE_DEFECTO); // orden de criterios de desempate de la tabla (editable solo por el organizador)
+  const [playoffsFormato, setPlayoffsFormato] = useState(null); // 'final' | 'semifinal' | 'cuartos' | null (playoffs aún no configurados)
+  const [playoffsBracket, setPlayoffsBracket] = useState(null); // { formato, rondas: [[{id, equipoA, seedA, equipoB, seedB, marcadorA, marcadorB}, ...], ...] }
   const [anotadores, setAnotadores] = useState([]); // máximos anotadores de la liga (compartido): [{id, equipoId, equipoNombre, jugadorId, jugadorNombre, jugadorNumero, jugadorPosicion, jugadorFoto, anotaciones}]
   const [tab, setTab] = useState("plantilla");
   const [errorFoto, setErrorFoto] = useState("");
@@ -812,6 +883,7 @@ export default function App() {
   const [vistaEquiposAbierta, setVistaEquiposAbierta] = useState(false); // pantalla completa con el listado de equipos
   const [modalCuenta, setModalCuenta] = useState(false); // pop up con las opciones de cuenta
   const [modalDesempates, setModalDesempates] = useState(null); // arreglo temporal de ids en edición, o null si el modal está cerrado
+  const [modalPlayoffs, setModalPlayoffs] = useState(null); // id de formato en edición dentro del modal, o null si el modal está cerrado
 
   // Eliminar liga por completo (requiere el PIN de organizador)
   const [modalEliminarLiga, setModalEliminarLiga] = useState(false);
@@ -924,7 +996,7 @@ export default function App() {
     if (!cargado || !ligaId) return;
     (async () => {
       try {
-        await window.storage.set(`liga-datos-${ligaId}`, JSON.stringify({ nombre: ligaNombre, pinCreador, equipos, partidosLiga, fechaLimiteRoster, foto: ligaFoto, anotadores, criteriosDesempate }), true);
+        await window.storage.set(`liga-datos-${ligaId}`, JSON.stringify({ nombre: ligaNombre, pinCreador, equipos, partidosLiga, fechaLimiteRoster, foto: ligaFoto, anotadores, criteriosDesempate, playoffsFormato, playoffsBracket }), true);
         // Mantiene sincronizado el índice liviano (nombre + foto) que se usa en el selector de ligas del login
         const res = await window.storage.get("ligas-indice", true).catch(() => null);
         const lista = res?.value ? JSON.parse(res.value) : [];
@@ -936,7 +1008,7 @@ export default function App() {
         }
       } catch (e) { console.error("Error guardando liga", e); }
     })();
-  }, [ligaId, ligaNombre, pinCreador, equipos, partidosLiga, fechaLimiteRoster, ligaFoto, anotadores, criteriosDesempate, cargado]);
+  }, [ligaId, ligaNombre, pinCreador, equipos, partidosLiga, fechaLimiteRoster, ligaFoto, anotadores, criteriosDesempate, playoffsFormato, playoffsBracket, cargado]);
 
   // Guardar mi plantilla/jugadas personales (solo si tengo sesión de equipo).
   // Se guarda como dato COMPARTIDO de la liga (bajo una llave única por equipo) para que
@@ -978,6 +1050,8 @@ export default function App() {
       setLigaFoto(liga.foto ?? null);
       setAnotadores(liga.anotadores ?? []);
       setCriteriosDesempate(liga.criteriosDesempate?.length ? liga.criteriosDesempate : CRITERIOS_DESEMPATE_DEFECTO);
+      setPlayoffsFormato(liga.playoffsFormato ?? null);
+      setPlayoffsBracket(liga.playoffsBracket ?? null);
       return liga;
     }
     return null;
@@ -1035,7 +1109,7 @@ export default function App() {
       const nuevaLista = [...lista, { id: nuevoId, nombre: nombreLigaInput.trim(), foto: null }];
       await window.storage.set("ligas-indice", JSON.stringify(nuevaLista), true);
       setLigasIndice(nuevaLista);
-      await window.storage.set(`liga-datos-${nuevoId}`, JSON.stringify({ nombre: nombreLigaInput.trim(), pinCreador: pinCreadorInput.trim(), equipos: [], partidosLiga: [], fechaLimiteRoster: "", foto: null, anotadores: [], criteriosDesempate: CRITERIOS_DESEMPATE_DEFECTO }), true);
+      await window.storage.set(`liga-datos-${nuevoId}`, JSON.stringify({ nombre: nombreLigaInput.trim(), pinCreador: pinCreadorInput.trim(), equipos: [], partidosLiga: [], fechaLimiteRoster: "", foto: null, anotadores: [], criteriosDesempate: CRITERIOS_DESEMPATE_DEFECTO, playoffsFormato: null, playoffsBracket: null }), true);
       setLigaId(nuevoId);
       setLigaNombre(nombreLigaInput.trim());
       setPinCreador(pinCreadorInput.trim());
@@ -1110,6 +1184,7 @@ export default function App() {
     setJugadores([]); setJugadas([]);
     setDatosEquipoCargados(false);
     setLigaId(null); setLigaNombre(""); setPinCreador(""); setEquipos([]); setPartidosLiga([]); setFechaLimiteRoster(""); setLigaFoto(null); setAnotadores([]); setCriteriosDesempate(CRITERIOS_DESEMPATE_DEFECTO);
+    setPlayoffsFormato(null); setPlayoffsBracket(null);
     setLigasIndice(null); setLigaElegida(null);
     setPantallaLogin("menu"); setContextoLogin(null);
     setNombreLigaInput(""); setPinCreadorInput(""); setPinEquipoInput(""); setErrorLogin("");
@@ -1226,6 +1301,58 @@ export default function App() {
   const guardarModalDesempates = () => {
     if (modalDesempates && modalDesempates.length) setCriteriosDesempate(modalDesempates);
     cerrarModalDesempates();
+  };
+
+  /* ---------- playoffs (solo organizador configura el formato y captura resultados) ---------- */
+  const abrirModalPlayoffs = () => setModalPlayoffs(playoffsFormato || "final");
+  const cerrarModalPlayoffs = () => setModalPlayoffs(null);
+
+  const generarBracketConTablaActual = (formatoId) => {
+    setPlayoffsFormato(formatoId);
+    setPlayoffsBracket(generarBracketPlayoffs(formatoId, filasLiga));
+  };
+
+  const confirmarFormatoPlayoffs = () => {
+    const formatoId = modalPlayoffs;
+    cerrarModalPlayoffs();
+    const cambiaFormato = formatoId !== playoffsFormato;
+    const hayResultados = bracketTieneResultados(playoffsBracket);
+    if (!playoffsBracket || cambiaFormato) {
+      if (hayResultados) {
+        pedirConfirmacion("Cambiar formato de playoffs",
+          "Ya hay resultados capturados en el bracket actual. Cambiar el formato genera un bracket nuevo con la tabla de posiciones vigente y se pierden los resultados capturados. ¿Continuar?",
+          () => generarBracketConTablaActual(formatoId));
+      } else {
+        generarBracketConTablaActual(formatoId);
+      }
+    }
+  };
+
+  const desactivarPlayoffs = () => {
+    cerrarModalPlayoffs();
+    pedirConfirmacion("Desactivar playoffs", "Se ocultará la sección de playoffs y se perderá el bracket y los resultados capturados. ¿Continuar?", () => {
+      setPlayoffsFormato(null);
+      setPlayoffsBracket(null);
+    });
+  };
+
+  const regenerarBracketPlayoffs = () => {
+    if (!playoffsFormato) return;
+    const hayResultados = bracketTieneResultados(playoffsBracket);
+    const accion = () => generarBracketConTablaActual(playoffsFormato);
+    if (hayResultados) {
+      pedirConfirmacion("Actualizar sedes con la tabla actual", "Se vuelve a armar el bracket desde cero usando la tabla de posiciones vigente y se pierden los resultados ya capturados. ¿Continuar?", accion);
+    } else {
+      accion();
+    }
+  };
+
+  const actualizarMarcadorPlayoff = (rondaIdx, partidoIdx, campo, valor) => {
+    setPlayoffsBracket((actual) => {
+      if (!actual) return actual;
+      const rondas = actual.rondas.map((r, ri) => ri !== rondaIdx ? r : r.map((p, pi) => pi !== partidoIdx ? p : { ...p, [campo]: valor }));
+      return avanzarGanadoresBracket({ ...actual, rondas });
+    });
   };
 
   /* ---------- plantilla ---------- */
@@ -2812,7 +2939,7 @@ export default function App() {
         {tab === "liga" && (
           <div>
             <div className="flex gap-1 mb-5 p-1 rounded-lg" style={{ background: activeTheme.surface, border: `1px solid ${activeTheme.border}` }}>
-              {[["posiciones", "Posiciones"], ["estadisticas", "Estadísticas"]].map(([key, label]) => (
+              {[["posiciones", "Posiciones"], ["playoffs", "Playoffs"], ["estadisticas", "Estadísticas"]].map(([key, label]) => (
                 <button key={key} onClick={() => setLigaSubTab(key)}
                   className="flex-1 py-2 rounded-md text-[11px] font-semibold transition"
                   style={{ background: ligaSubTab === key ? activeTheme.text : "transparent", color: ligaSubTab === key ? activeTheme.bg : activeTheme.textDim }}>
@@ -2868,6 +2995,101 @@ export default function App() {
                 <div className="text-[11px]" style={{ color: activeTheme.textDim }}>
                   Desempates: {criteriosDesempate.map((id) => CRITERIOS_DESEMPATE_DISPONIBLES.find((c) => c.id === id)?.label).filter(Boolean).join(" → ")}
                 </div>
+              </div>
+            )}
+
+            {ligaSubTab === "playoffs" && (
+              <div>
+                <div className="flex items-center justify-between mb-4">
+                  <div className="f-display text-lg font-bold uppercase" style={{ color: activeTheme.text }}>Playoffs</div>
+                  {sesion.tipo === "creador" && (
+                    <button onClick={abrirModalPlayoffs}
+                      className="flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1.5 rounded-md shrink-0"
+                      style={{ background: activeTheme.surface2, color: activeTheme.textDim, border: `1px solid ${activeTheme.border}` }}>
+                      <GearIcon size={12} /> {playoffsFormato ? "Configurar" : "Activar"}
+                    </button>
+                  )}
+                </div>
+
+                {!playoffsBracket && (
+                  <div className="rounded-xl py-10 px-5 text-center" style={{ background: activeTheme.surface, border: `1px solid ${activeTheme.border}` }}>
+                    <div className="text-sm font-semibold mb-1" style={{ color: activeTheme.text }}>Todavía no hay playoffs configurados</div>
+                    <div className="text-xs mb-4" style={{ color: activeTheme.textDim }}>
+                      {sesion.tipo === "creador"
+                        ? "Elige un formato — final directa, semifinales o cuartos de final — y arma el bracket con la tabla de posiciones actual."
+                        : "El organizador todavía no activó la fase de playoffs de esta liga."}
+                    </div>
+                    {sesion.tipo === "creador" && (
+                      <button onClick={abrirModalPlayoffs} className="py-2.5 px-5 rounded-lg text-sm font-semibold"
+                        style={{ background: activeTheme.offense, color: "#1A1305" }}>
+                        Configurar playoffs
+                      </button>
+                    )}
+                  </div>
+                )}
+
+                {playoffsBracket && (
+                  <div>
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="text-xs font-bold uppercase tracking-wide" style={{ color: activeTheme.offense }}>
+                        {FORMATOS_PLAYOFFS.find((f) => f.id === playoffsBracket.formato)?.label}
+                      </div>
+                      {sesion.tipo === "creador" && (
+                        <button onClick={regenerarBracketPlayoffs} className="text-[11px] font-medium underline underline-offset-2" style={{ color: activeTheme.textDim }}>
+                          Actualizar sedes con la tabla
+                        </button>
+                      )}
+                    </div>
+
+                    <div className="flex flex-col gap-6">
+                      {playoffsBracket.rondas.map((ronda, rondaIdx) => (
+                        <div key={rondaIdx}>
+                          <div className="text-[11px] f-mono uppercase tracking-wide mb-2" style={{ color: activeTheme.textDim }}>
+                            {FORMATOS_PLAYOFFS.find((f) => f.id === playoffsBracket.formato)?.rondas[rondaIdx]}
+                          </div>
+                          <div className="flex flex-col gap-2">
+                            {ronda.map((p, partidoIdx) => {
+                              const ganador = ganadorDeCruce(p);
+                              return (
+                                <div key={p.id} className="rounded-xl p-2.5" style={{ background: activeTheme.surface, border: `1px solid ${activeTheme.border}` }}>
+                                  {[["seedA", "equipoA", "marcadorA"], ["seedB", "equipoB", "marcadorB"]].map(([campoSeed, campoEquipo, campoMarcador]) => {
+                                    const nombreEquipo = p[campoEquipo];
+                                    const esGanador = ganador && ganador.nombre === nombreEquipo;
+                                    return (
+                                      <div key={campoEquipo} className="flex items-center gap-2 py-1">
+                                        <div className="w-4 text-center text-[10px] f-mono shrink-0" style={{ color: activeTheme.textDim }}>{p[campoSeed] || ""}</div>
+                                        <div className="w-7 h-7 rounded-full overflow-hidden shrink-0 flex items-center justify-center"
+                                          style={{ background: activeTheme.surface2, border: `1px solid ${activeTheme.border}` }}>
+                                          {nombreEquipo && fotoDeEquipo(nombreEquipo)
+                                            ? <img src={fotoDeEquipo(nombreEquipo)} alt="" className="w-full h-full object-cover" /> : null}
+                                        </div>
+                                        <div className="flex-1 text-xs truncate"
+                                          style={{
+                                            color: !nombreEquipo ? activeTheme.textDim : (esGanador ? activeTheme.text : activeTheme.textDim),
+                                            fontWeight: esGanador ? 700 : 500, fontStyle: nombreEquipo ? "normal" : "italic",
+                                          }}>
+                                          {nombreEquipo || "Por definir"}
+                                        </div>
+                                        {sesion.tipo === "creador" && p.equipoA && p.equipoB ? (
+                                          <input type="number" value={p[campoMarcador]}
+                                            onChange={(e) => actualizarMarcadorPlayoff(rondaIdx, partidoIdx, campoMarcador, e.target.value)}
+                                            className="w-10 text-center rounded-md py-1 text-xs f-mono outline-none"
+                                            style={{ background: activeTheme.surface2, color: activeTheme.text, border: `1px solid ${activeTheme.border}` }} />
+                                        ) : (
+                                          <div className="w-10 text-center text-xs f-mono" style={{ color: activeTheme.textDim }}>{p[campoMarcador] !== "" ? p[campoMarcador] : "-"}</div>
+                                        )}
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
@@ -3657,6 +3879,51 @@ export default function App() {
                 <button onClick={cerrarModalDesempates} className="flex-1 py-3 rounded-lg font-semibold text-sm"
                   style={{ background: activeTheme.surface2, color: activeTheme.text, border: `1px solid ${activeTheme.border}` }}>Cancelar</button>
                 <button onClick={guardarModalDesempates} className="flex-1 py-3 rounded-lg font-semibold text-sm"
+                  style={{ background: activeTheme.text, color: activeTheme.bg }}>Guardar</button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ============ MODAL: FORMATO DE PLAYOFFS (solo organizador) ============ */}
+        {modalPlayoffs && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
+            style={{ background: "rgba(6,8,7,0.75)" }} onClick={cerrarModalPlayoffs}>
+            <div className="w-full max-w-sm rounded-2xl p-5 overflow-hidden"
+              style={{ background: activeTheme.surface, border: `1px solid ${activeTheme.border}` }}
+              onClick={(e) => e.stopPropagation()}>
+              <div className="text-[11px] f-mono mb-2 uppercase tracking-wide" style={{ color: activeTheme.textDim }}>Formato de playoffs</div>
+              <div className="text-xs mb-4" style={{ color: activeTheme.textDim }}>
+                Elige cuántos equipos clasifican según la tabla de posiciones. Al guardar se arma el bracket con la semilla 1 (mejor lugar) contra la última semilla clasificada, y así sucesivamente.
+              </div>
+              <div className="flex flex-col gap-2 mb-2">
+                {FORMATOS_PLAYOFFS.map((f) => (
+                  <button key={f.id} onClick={() => setModalPlayoffs(f.id)}
+                    className="w-full flex items-center justify-between text-left py-3 px-4 rounded-lg text-sm font-semibold"
+                    style={{
+                      background: modalPlayoffs === f.id ? activeTheme.offense : activeTheme.surface2,
+                      color: modalPlayoffs === f.id ? "#1A1305" : activeTheme.text,
+                      border: `1px solid ${modalPlayoffs === f.id ? activeTheme.offense : activeTheme.border}`,
+                    }}>
+                    <span>{f.label}</span>
+                    <span className="text-[11px] font-normal" style={{ color: modalPlayoffs === f.id ? "#1A1305" : activeTheme.textDim }}>{f.equipos} equipos</span>
+                  </button>
+                ))}
+              </div>
+              {equipos.length < (FORMATOS_PLAYOFFS.find((f) => f.id === modalPlayoffs)?.equipos || 0) && (
+                <div className="text-[11px] mb-2" style={{ color: activeTheme.danger }}>
+                  La liga tiene {equipos.length} equipo{equipos.length === 1 ? "" : "s"} registrados — los lugares sin equipo quedarán como "Por definir".
+                </div>
+              )}
+              {playoffsFormato && (
+                <button onClick={desactivarPlayoffs} className="w-full py-2 text-xs font-medium mt-1 mb-2" style={{ color: activeTheme.danger }}>
+                  Desactivar playoffs
+                </button>
+              )}
+              <div className="flex gap-2 mt-2">
+                <button onClick={cerrarModalPlayoffs} className="flex-1 py-3 rounded-lg font-semibold text-sm"
+                  style={{ background: activeTheme.surface2, color: activeTheme.text, border: `1px solid ${activeTheme.border}` }}>Cancelar</button>
+                <button onClick={confirmarFormatoPlayoffs} className="flex-1 py-3 rounded-lg font-semibold text-sm"
                   style={{ background: activeTheme.text, color: activeTheme.bg }}>Guardar</button>
               </div>
             </div>
