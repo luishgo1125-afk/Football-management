@@ -1656,6 +1656,24 @@ export default function App() {
     return fila ? `${fila.g}-${fila.p}-${fila.e}` : "0-0-0";
   };
 
+  /* Columna de equipo para las tarjetas del bracket de playoffs — mismo diseño que renderLogoEquipo
+     del calendario (logo circular + nombre), pero con la semilla (posición en la tabla) en vez del récord. */
+  const renderLogoEquipoBracket = (nombreEquipo, seed) => (
+    <div className="flex flex-col items-center gap-1.5 w-20 shrink-0">
+      <div className="w-16 h-16 rounded-full overflow-hidden flex items-center justify-center"
+        style={{ background: activeTheme.surface2, border: `1px solid ${activeTheme.border}` }}>
+        {nombreEquipo && fotoDeEquipo(nombreEquipo)
+          ? <img src={fotoDeEquipo(nombreEquipo)} alt="" className="w-full h-full object-cover" />
+          : <span className="text-[10px] f-mono font-bold text-center px-1" style={{ color: activeTheme.textDim }}>{nombreEquipo || "?"}</span>}
+      </div>
+      <div className="text-xs font-semibold text-center truncate w-full"
+        style={{ color: !nombreEquipo ? activeTheme.textDim : (nombreEquipo === equipo ? activeTheme.offense : activeTheme.text) }}>
+        {nombreEquipo || "Por definir"}
+      </div>
+      <div className="text-[11px] f-mono" style={{ color: activeTheme.textDim }}>{seed ? `Semilla ${seed}` : "—"}</div>
+    </div>
+  );
+
   // Próximo partido: para una sesión de equipo, el siguiente juego de ESE equipo (usado en la tarjeta resumen).
   // Para admin/visitante, el siguiente juego de la liga en general (solo para resaltar la jornada próxima).
   const hoyInicioDia = new Date();
@@ -3047,40 +3065,54 @@ export default function App() {
                           <div className="text-[11px] f-mono uppercase tracking-wide mb-2" style={{ color: activeTheme.textDim }}>
                             {FORMATOS_PLAYOFFS.find((f) => f.id === playoffsBracket.formato)?.rondas[rondaIdx]}
                           </div>
-                          <div className="flex flex-col gap-2">
+                          <div className="flex flex-col gap-3">
                             {ronda.map((p, partidoIdx) => {
                               const ganador = ganadorDeCruce(p);
+                              const ambosDefinidos = !!(p.equipoA && p.equipoB);
+                              const puedeEditar = sesion.tipo === "creador" && ambosDefinidos;
+                              const nombreRondaActual = FORMATOS_PLAYOFFS.find((f) => f.id === playoffsBracket.formato)?.rondas[rondaIdx];
                               return (
-                                <div key={p.id} className="rounded-xl p-2.5" style={{ background: activeTheme.surface, border: `1px solid ${activeTheme.border}` }}>
-                                  {[["seedA", "equipoA", "marcadorA"], ["seedB", "equipoB", "marcadorB"]].map(([campoSeed, campoEquipo, campoMarcador]) => {
-                                    const nombreEquipo = p[campoEquipo];
-                                    const esGanador = ganador && ganador.nombre === nombreEquipo;
-                                    return (
-                                      <div key={campoEquipo} className="flex items-center gap-2 py-1">
-                                        <div className="w-4 text-center text-[10px] f-mono shrink-0" style={{ color: activeTheme.textDim }}>{p[campoSeed] || ""}</div>
-                                        <div className="w-7 h-7 rounded-full overflow-hidden shrink-0 flex items-center justify-center"
-                                          style={{ background: activeTheme.surface2, border: `1px solid ${activeTheme.border}` }}>
-                                          {nombreEquipo && fotoDeEquipo(nombreEquipo)
-                                            ? <img src={fotoDeEquipo(nombreEquipo)} alt="" className="w-full h-full object-cover" /> : null}
-                                        </div>
-                                        <div className="flex-1 text-xs truncate"
-                                          style={{
-                                            color: !nombreEquipo ? activeTheme.textDim : (esGanador ? activeTheme.text : activeTheme.textDim),
-                                            fontWeight: esGanador ? 700 : 500, fontStyle: nombreEquipo ? "normal" : "italic",
-                                          }}>
-                                          {nombreEquipo || "Por definir"}
-                                        </div>
-                                        {sesion.tipo === "creador" && p.equipoA && p.equipoB ? (
-                                          <input type="number" value={p[campoMarcador]}
-                                            onChange={(e) => actualizarMarcadorPlayoff(rondaIdx, partidoIdx, campoMarcador, e.target.value)}
-                                            className="w-10 text-center rounded-md py-1 text-xs f-mono outline-none"
-                                            style={{ background: activeTheme.surface2, color: activeTheme.text, border: `1px solid ${activeTheme.border}` }} />
-                                        ) : (
-                                          <div className="w-10 text-center text-xs f-mono" style={{ color: activeTheme.textDim }}>{p[campoMarcador] !== "" ? p[campoMarcador] : "-"}</div>
-                                        )}
+                                <div key={p.id} className="rounded-xl p-5 select-none"
+                                  style={{ background: activeTheme.surface, border: `1px solid ${activeTheme.border}`, boxShadow: activeTheme.shadow }}>
+                                  <div className="flex items-center justify-between gap-1">
+                                    {renderLogoEquipoBracket(p.equipoA, p.seedA)}
+
+                                    {puedeEditar ? (
+                                      <input type="number" value={p.marcadorA}
+                                        onChange={(e) => actualizarMarcadorPlayoff(rondaIdx, partidoIdx, "marcadorA", e.target.value)}
+                                        className="f-mono text-3xl font-bold text-center px-1 shrink-0 w-14 outline-none bg-transparent"
+                                        style={{ color: activeTheme.text, borderBottom: `1px dashed ${activeTheme.border}` }} />
+                                    ) : (
+                                      <div className="f-mono text-3xl font-bold text-center px-1 shrink-0" style={{ color: p.marcadorA !== "" ? activeTheme.text : activeTheme.textDim }}>
+                                        {p.marcadorA !== "" ? p.marcadorA : "–"}
                                       </div>
-                                    );
-                                  })}
+                                    )}
+
+                                    <div className="flex-1 flex flex-col items-center gap-1.5 min-w-0 px-2">
+                                      <div className="text-xs f-mono text-center uppercase" style={{ color: activeTheme.textDim }}>{nombreRondaActual}</div>
+                                      <span className="text-[11px] px-2 py-1 rounded font-bold f-mono uppercase mt-0.5"
+                                        style={{
+                                          background: ganador ? activeTheme.win : activeTheme.surface2,
+                                          color: ganador ? "#0A0D0C" : activeTheme.textDim,
+                                          border: ganador ? "none" : `1px solid ${activeTheme.border}`,
+                                        }}>
+                                        {ganador ? `Avanza: ${ganador.nombre}` : ambosDefinidos ? "Por jugar" : "Por definir"}
+                                      </span>
+                                    </div>
+
+                                    {puedeEditar ? (
+                                      <input type="number" value={p.marcadorB}
+                                        onChange={(e) => actualizarMarcadorPlayoff(rondaIdx, partidoIdx, "marcadorB", e.target.value)}
+                                        className="f-mono text-3xl font-bold text-center px-1 shrink-0 w-14 outline-none bg-transparent"
+                                        style={{ color: activeTheme.text, borderBottom: `1px dashed ${activeTheme.border}` }} />
+                                    ) : (
+                                      <div className="f-mono text-3xl font-bold text-center px-1 shrink-0" style={{ color: p.marcadorB !== "" ? activeTheme.text : activeTheme.textDim }}>
+                                        {p.marcadorB !== "" ? p.marcadorB : "–"}
+                                      </div>
+                                    )}
+
+                                    {renderLogoEquipoBracket(p.equipoB, p.seedB)}
+                                  </div>
                                 </div>
                               );
                             })}
