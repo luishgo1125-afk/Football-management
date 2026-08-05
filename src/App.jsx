@@ -220,6 +220,111 @@ function PlayDiagram({ offense, defense, linea, width = 300, height = 168 }) {
     </svg>
   );
 }
+/* Anillos concéntricos decorativos (como un radar de pases) — fondo de la pantalla de inicio */
+function AnillosConcentricos({ color, width = 460, height = 460, cx = 230, cy = 230 }) {
+  const radios = [26, 50, 74, 98, 122, 146, 170, 194, 218];
+  return (
+    <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} fill="none" style={{ display: "block" }}>
+      {radios.map((r) => (
+        <circle key={r} cx={cx} cy={cy} r={r} stroke={color} strokeWidth="1" opacity="0.16" />
+      ))}
+    </svg>
+  );
+}
+
+/* Etiqueta chica de posición dentro de un círculo hueco, estilo pizarra táctica */
+function EtiquetaPosicion({ x, y, r = 9, label, color, fontSize = 7.5 }) {
+  return (
+    <g>
+      <circle cx={x} cy={y} r={r} stroke={color} strokeWidth="1.3" opacity="0.85" />
+      <text x={x} y={y + fontSize * 0.34} textAnchor="middle" fontSize={fontSize} fontFamily="'JetBrains Mono',monospace" fontWeight="700" fill={color} opacity="0.85">{label}</text>
+    </g>
+  );
+}
+
+/* Diagrama de jugada grande y etiquetado — variante "superior" (Double Post / Y-Post / X Dig) */
+function PlayDiagramTop({ color, dim, width = 440, height = 260 }) {
+  return (
+    <svg width={width} height={height} viewBox="0 0 440 260" fill="none" style={{ display: "block" }}>
+      <line x1="8" y1="196" x2="432" y2="196" stroke={dim} strokeWidth="1.3" strokeDasharray="1 8" strokeLinecap="round" opacity="0.7" />
+
+      {/* Línea ofensiva */}
+      {[176, 196, 216, 236, 256].map((x) => (
+        <rect key={x} x={x} y={191.5} width="9" height="9" fill={color} opacity="0.9" />
+      ))}
+
+      {/* Posiciones etiquetadas sobre y detrás de la línea */}
+      <EtiquetaPosicion x={130} y={188} label="WR" color={color} />
+      <EtiquetaPosicion x={216} y={172} label="QB" color={color} />
+      <EtiquetaPosicion x={196} y={196} r={7} label="C" color={color} fontSize={6.5} />
+      <EtiquetaPosicion x={216} y={196} r={7} label="G" color={color} fontSize={6.5} />
+      <EtiquetaPosicion x={256} y={196} r={7} label="T" color={color} fontSize={6.5} />
+      <EtiquetaPosicion x={326} y={188} label="TE" color={color} />
+      <EtiquetaPosicion x={216} y={228} label="RB" color={color} />
+
+      {/* Rutas verticales cortas */}
+      <line x1="80" y1="192" x2="80" y2="128" stroke={color} strokeWidth="1.5" strokeLinecap="round" opacity="0.85" />
+      <line x1="368" y1="192" x2="368" y2="120" stroke={color} strokeWidth="1.5" strokeLinecap="round" opacity="0.85" />
+
+      {/* Y-Post: ruta del slot que corta al poste */}
+      <path d="M130 179 C 128 140, 150 108, 190 84" stroke={color} strokeWidth="1.5" fill="none" strokeLinecap="round" opacity="0.9" />
+      <path d="M183 90 L 190 84 L 189 93" stroke={color} strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round" opacity="0.9" />
+      <text x="196" y="82" fontSize="11" fontFamily="'JetBrains Mono',monospace" fontWeight="700" fill={color} opacity="0.85">Y-Post</text>
+
+      {/* X Dig: ruta que cruza desde el extremo hacia el medio */}
+      <path d="M368 184 C 340 150, 300 128, 250 118" stroke={color} strokeWidth="1.5" fill="none" strokeLinecap="round" opacity="0.9" />
+      <path d="M259 122 L 250 118 L 257 111" stroke={color} strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round" opacity="0.9" />
+      <text x="366" y="106" fontSize="11" fontFamily="'JetBrains Mono',monospace" fontWeight="700" fill={color} opacity="0.85">X Dig</text>
+
+      {/* Double Post: dos rutas convergiendo profundo */}
+      <path d="M326 179 C 322 130, 330 96, 356 64" stroke={color} strokeWidth="1.5" fill="none" strokeLinecap="round" opacity="0.9" />
+      <path d="M349 71 L 356 64 L 358 74" stroke={color} strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round" opacity="0.9" />
+      <path d="M256 187 C 280 130, 310 88, 356 64" stroke={color} strokeWidth="1.5" fill="none" strokeLinecap="round" opacity="0.9" />
+      <text x="284" y="52" fontSize="11" fontFamily="'JetBrains Mono',monospace" fontWeight="700" fill={color} opacity="0.85">Double Post</text>
+
+      {/* Check-and-Release del corredor */}
+      <path d="M216 219 C 210 210, 210 202, 216 196" stroke={color} strokeWidth="1.4" fill="none" strokeLinecap="round" strokeDasharray="1 6" opacity="0.8" />
+      <text x="170" y="248" fontSize="11" fontFamily="'JetBrains Mono',monospace" fontWeight="700" fill={color} opacity="0.85">Check-and-Release</text>
+    </svg>
+  );
+}
+
+/* Diagrama de jugada grande y etiquetado — variante "inferior" (Blitz / Z-Post / Y-Post), en miniatura */
+function PlayDiagramBottom({ color, dim, width = 360, height = 220 }) {
+  return (
+    <svg width={width} height={height} viewBox="0 0 360 220" fill="none" style={{ display: "block" }}>
+      <line x1="6" y1="140" x2="354" y2="140" stroke={dim} strokeWidth="1.2" strokeDasharray="1 8" strokeLinecap="round" opacity="0.7" />
+
+      {[142, 160, 178, 196, 214].map((x) => (
+        <rect key={x} x={x} y={135.5} width="8" height="8" fill={color} opacity="0.9" />
+      ))}
+
+      <EtiquetaPosicion x={90} y={132} r={8} label="WR" color={color} fontSize={7} />
+      <EtiquetaPosicion x={178} y={116} r={8} label="QB" color={color} fontSize={7} />
+      <EtiquetaPosicion x={160} y={140} r={6} label="C" color={color} fontSize={5.5} />
+      <EtiquetaPosicion x={178} y={140} r={6} label="G" color={color} fontSize={5.5} />
+      <EtiquetaPosicion x={214} y={140} r={6} label="T" color={color} fontSize={5.5} />
+      <EtiquetaPosicion x={274} y={132} r={8} label="WR" color={color} fontSize={7} />
+      <EtiquetaPosicion x={178} y={168} r={8} label="RB" color={color} fontSize={7} />
+
+      <path d="M90 124 C 88 92, 104 66, 134 44" stroke={color} strokeWidth="1.4" fill="none" strokeLinecap="round" opacity="0.9" />
+      <path d="M127 50 L 134 44 L 133 53" stroke={color} strokeWidth="1.4" fill="none" strokeLinecap="round" strokeLinejoin="round" opacity="0.9" />
+      <text x="140" y="42" fontSize="10" fontFamily="'JetBrains Mono',monospace" fontWeight="700" fill={color} opacity="0.85">Z-Post</text>
+
+      <line x1="274" y1="124" x2="274" y2="70" stroke={color} strokeWidth="1.4" strokeLinecap="round" opacity="0.85" />
+      <path d="M267 78 L 274 70 L 281 78" stroke={color} strokeWidth="1.4" fill="none" strokeLinecap="round" strokeLinejoin="round" opacity="0.9" />
+      <text x="238" y="60" fontSize="10" fontFamily="'JetBrains Mono',monospace" fontWeight="700" fill={color} opacity="0.85">Y-Post</text>
+
+      <path d="M20 40 L 46 16" stroke={color} strokeWidth="1.4" strokeLinecap="round" opacity="0.85" />
+      <path d="M39 16 L 46 16 L 46 23" stroke={color} strokeWidth="1.4" fill="none" strokeLinecap="round" strokeLinejoin="round" opacity="0.9" />
+      <text x="16" y="30" fontSize="10" fontFamily="'JetBrains Mono',monospace" fontWeight="700" fill={color} opacity="0.85">Blitz</text>
+
+      <path d="M178 160 C 172 152, 172 146, 178 140" stroke={color} strokeWidth="1.3" fill="none" strokeLinecap="round" strokeDasharray="1 6" opacity="0.8" />
+      <text x="132" y="196" fontSize="10" fontFamily="'JetBrains Mono',monospace" fontWeight="700" fill={color} opacity="0.85">Check-and-Release</text>
+    </svg>
+  );
+}
+
 const posASide = (pos) => (POSICIONES.ofensiva.includes(pos) ? "ofensiva" : "defensiva");
 
 
@@ -364,8 +469,37 @@ function formatearHora(horaStr) {
   return `${h12}:${String(min).padStart(2, "0")} ${ampm}`;
 }
 
-/* Calcula la tabla de posiciones a partir del calendario. Los juegos BYE no cuentan. */
-function calcularTablaLiga(partidosLiga, equipoPropio) {
+/* Registro de criterios de desempate disponibles para la tabla de posiciones.
+   Cada cmp(a, b) sigue la convención de Array.sort: valor positivo = "a" queda después de "b". */
+const CRITERIOS_DESEMPATE_DISPONIBLES = [
+  { id: "victorias", label: "Más victorias", cmp: (a, b) => b.g - a.g },
+  { id: "diferencial", label: "Mejor diferencial de puntos", cmp: (a, b) => (b.pf - b.pc) - (a.pf - a.pc) },
+  { id: "puntosFavor", label: "Más puntos anotados", cmp: (a, b) => b.pf - a.pf },
+  { id: "puntosContra", label: "Menos puntos recibidos", cmp: (a, b) => a.pc - b.pc },
+  { id: "menosDerrotas", label: "Menos derrotas", cmp: (a, b) => a.p - b.p },
+  {
+    id: "enfrentamientoDirecto", label: "Enfrentamiento directo (cabeza a cabeza)",
+    cmp: (a, b, partidosLiga) => {
+      let victoriasA = 0, victoriasB = 0;
+      (partidosLiga || []).forEach((j) => {
+        if (j.bye || j.marcadorLocal == null || j.marcadorVisitante == null) return;
+        const equiposDelJuego = [j.local, j.visitante];
+        if (!equiposDelJuego.includes(a.nombre) || !equiposDelJuego.includes(b.nombre)) return;
+        const golesA = j.local === a.nombre ? j.marcadorLocal : j.marcadorVisitante;
+        const golesB = j.local === b.nombre ? j.marcadorLocal : j.marcadorVisitante;
+        if (golesA > golesB) victoriasA += 1;
+        else if (golesB > golesA) victoriasB += 1;
+      });
+      return victoriasB - victoriasA;
+    },
+  },
+];
+const CRITERIOS_DESEMPATE_DEFECTO = ["victorias", "diferencial", "puntosFavor", "puntosContra"];
+
+/* Calcula la tabla de posiciones a partir del calendario. Los juegos BYE no cuentan.
+   `criteriosDesempate` es un arreglo ordenado de ids (ver CRITERIOS_DESEMPATE_DISPONIBLES) que el
+   organizador puede configurar; se aplican en orden hasta romper el empate. */
+function calcularTablaLiga(partidosLiga, equipoPropio, criteriosDesempate = CRITERIOS_DESEMPATE_DEFECTO) {
   const stats = {};
   const asegurar = (nombre) => {
     if (!stats[nombre]) stats[nombre] = { id: nombre, nombre, g: 0, p: 0, e: 0, pf: 0, pc: 0 };
@@ -385,9 +519,18 @@ function calcularTablaLiga(partidosLiga, equipoPropio) {
     else if (j.marcadorLocal < j.marcadorVisitante) { local.p += 1; visit.g += 1; }
     else { local.e += 1; visit.e += 1; }
   });
+  const criterios = (criteriosDesempate && criteriosDesempate.length ? criteriosDesempate : CRITERIOS_DESEMPATE_DEFECTO)
+    .map((id) => CRITERIOS_DESEMPATE_DISPONIBLES.find((c) => c.id === id))
+    .filter(Boolean);
   return Object.values(stats)
     .map((row) => ({ ...row, esPropio: row.nombre === equipoPropio }))
-    .sort((a, b) => (b.g - a.g) || ((b.pf - b.pc) - (a.pf - a.pc)));
+    .sort((a, b) => {
+      for (const criterio of criterios) {
+        const r = criterio.cmp(a, b, partidosLiga);
+        if (r !== 0) return r;
+      }
+      return a.nombre.localeCompare(b.nombre);
+    });
 }
 
 /* Determina qué tipo de asignación le corresponde a un jugador al iniciar un trazo */
@@ -580,6 +723,7 @@ export default function App() {
   const [partidosLiga, setPartidosLiga] = useState([]); // calendario único de la liga activa (compartido)
   const [fechaLimiteRoster, setFechaLimiteRoster] = useState(""); // fecha límite para que los equipos registren jugadores
   const [ligaFoto, setLigaFoto] = useState(null); // foto de la liga (editable solo por el organizador)
+  const [criteriosDesempate, setCriteriosDesempate] = useState(CRITERIOS_DESEMPATE_DEFECTO); // orden de criterios de desempate de la tabla (editable solo por el organizador)
   const [anotadores, setAnotadores] = useState([]); // máximos anotadores de la liga (compartido): [{id, equipoId, equipoNombre, jugadorId, jugadorNombre, jugadorNumero, jugadorPosicion, jugadorFoto, anotaciones}]
   const [tab, setTab] = useState("plantilla");
   const [errorFoto, setErrorFoto] = useState("");
@@ -667,6 +811,7 @@ export default function App() {
   const [menuPrincipalAbierto, setMenuPrincipalAbierto] = useState(false); // dropdown corto del ☰: Equipos / Cuenta
   const [vistaEquiposAbierta, setVistaEquiposAbierta] = useState(false); // pantalla completa con el listado de equipos
   const [modalCuenta, setModalCuenta] = useState(false); // pop up con las opciones de cuenta
+  const [modalDesempates, setModalDesempates] = useState(null); // arreglo temporal de ids en edición, o null si el modal está cerrado
 
   // Eliminar liga por completo (requiere el PIN de organizador)
   const [modalEliminarLiga, setModalEliminarLiga] = useState(false);
@@ -779,7 +924,7 @@ export default function App() {
     if (!cargado || !ligaId) return;
     (async () => {
       try {
-        await window.storage.set(`liga-datos-${ligaId}`, JSON.stringify({ nombre: ligaNombre, pinCreador, equipos, partidosLiga, fechaLimiteRoster, foto: ligaFoto, anotadores }), true);
+        await window.storage.set(`liga-datos-${ligaId}`, JSON.stringify({ nombre: ligaNombre, pinCreador, equipos, partidosLiga, fechaLimiteRoster, foto: ligaFoto, anotadores, criteriosDesempate }), true);
         // Mantiene sincronizado el índice liviano (nombre + foto) que se usa en el selector de ligas del login
         const res = await window.storage.get("ligas-indice", true).catch(() => null);
         const lista = res?.value ? JSON.parse(res.value) : [];
@@ -791,7 +936,7 @@ export default function App() {
         }
       } catch (e) { console.error("Error guardando liga", e); }
     })();
-  }, [ligaId, ligaNombre, pinCreador, equipos, partidosLiga, fechaLimiteRoster, ligaFoto, anotadores, cargado]);
+  }, [ligaId, ligaNombre, pinCreador, equipos, partidosLiga, fechaLimiteRoster, ligaFoto, anotadores, criteriosDesempate, cargado]);
 
   // Guardar mi plantilla/jugadas personales (solo si tengo sesión de equipo).
   // Se guarda como dato COMPARTIDO de la liga (bajo una llave única por equipo) para que
@@ -832,6 +977,7 @@ export default function App() {
       setFechaLimiteRoster(liga.fechaLimiteRoster ?? "");
       setLigaFoto(liga.foto ?? null);
       setAnotadores(liga.anotadores ?? []);
+      setCriteriosDesempate(liga.criteriosDesempate?.length ? liga.criteriosDesempate : CRITERIOS_DESEMPATE_DEFECTO);
       return liga;
     }
     return null;
@@ -889,7 +1035,7 @@ export default function App() {
       const nuevaLista = [...lista, { id: nuevoId, nombre: nombreLigaInput.trim(), foto: null }];
       await window.storage.set("ligas-indice", JSON.stringify(nuevaLista), true);
       setLigasIndice(nuevaLista);
-      await window.storage.set(`liga-datos-${nuevoId}`, JSON.stringify({ nombre: nombreLigaInput.trim(), pinCreador: pinCreadorInput.trim(), equipos: [], partidosLiga: [], fechaLimiteRoster: "", foto: null, anotadores: [] }), true);
+      await window.storage.set(`liga-datos-${nuevoId}`, JSON.stringify({ nombre: nombreLigaInput.trim(), pinCreador: pinCreadorInput.trim(), equipos: [], partidosLiga: [], fechaLimiteRoster: "", foto: null, anotadores: [], criteriosDesempate: CRITERIOS_DESEMPATE_DEFECTO }), true);
       setLigaId(nuevoId);
       setLigaNombre(nombreLigaInput.trim());
       setPinCreador(pinCreadorInput.trim());
@@ -963,7 +1109,7 @@ export default function App() {
     setModalCuenta(false);
     setJugadores([]); setJugadas([]);
     setDatosEquipoCargados(false);
-    setLigaId(null); setLigaNombre(""); setPinCreador(""); setEquipos([]); setPartidosLiga([]); setFechaLimiteRoster(""); setLigaFoto(null); setAnotadores([]);
+    setLigaId(null); setLigaNombre(""); setPinCreador(""); setEquipos([]); setPartidosLiga([]); setFechaLimiteRoster(""); setLigaFoto(null); setAnotadores([]); setCriteriosDesempate(CRITERIOS_DESEMPATE_DEFECTO);
     setLigasIndice(null); setLigaElegida(null);
     setPantallaLogin("menu"); setContextoLogin(null);
     setNombreLigaInput(""); setPinCreadorInput(""); setPinEquipoInput(""); setErrorLogin("");
@@ -1054,6 +1200,32 @@ export default function App() {
     }
     setPinCreador(pinNuevoInput.trim());
     cerrarModalCambiarPin();
+  };
+
+  /* ---------- desempates de la tabla de posiciones (solo organizador) ---------- */
+  const abrirModalDesempates = () => setModalDesempates([...criteriosDesempate]);
+  const cerrarModalDesempates = () => setModalDesempates(null);
+  const toggleCriterioDesempate = (id) => {
+    setModalDesempates((actual) => {
+      if (actual.includes(id)) {
+        if (actual.length === 1) return actual; // siempre debe quedar al menos un criterio activo
+        return actual.filter((c) => c !== id);
+      }
+      return [...actual, id];
+    });
+  };
+  const moverCriterioDesempate = (indice, direccion) => {
+    setModalDesempates((actual) => {
+      const nuevo = [...actual];
+      const destino = indice + direccion;
+      if (destino < 0 || destino >= nuevo.length) return actual;
+      [nuevo[indice], nuevo[destino]] = [nuevo[destino], nuevo[indice]];
+      return nuevo;
+    });
+  };
+  const guardarModalDesempates = () => {
+    if (modalDesempates && modalDesempates.length) setCriteriosDesempate(modalDesempates);
+    cerrarModalDesempates();
   };
 
   /* ---------- plantilla ---------- */
@@ -1441,7 +1613,7 @@ export default function App() {
   };
 
   /* ---------- liga (tabla + equipos) ---------- */
-  const filasLiga = calcularTablaLiga(partidosLiga, sesion && sesion.tipo === "equipo" ? equipo : null);
+  const filasLiga = calcularTablaLiga(partidosLiga, sesion && sesion.tipo === "equipo" ? equipo : null, criteriosDesempate);
 
   const puedeEditarEquipo = (entry) => sesion && (sesion.tipo === "creador" || (sesion.tipo === "equipo" && entry.id === sesion.equipoId));
 
@@ -1589,37 +1761,66 @@ export default function App() {
   }
 
   if (!sesion) {
+    // La pantalla de inicio de sesión siempre usa la estética navy + dorado (independiente del modo claro/oscuro del resto de la app)
+    const loginBg = "#0B1220";
+    const loginBg2 = "#0E1A2E";
+    const loginGold = "#D9A441";
+    const loginGoldSoft = "#C9A227";
+    const loginLine = "rgba(217,164,65,0.35)";
+    const loginTextDim = "#8A97AC";
+    const loginInputStyle = { background: "rgba(255,255,255,0.05)", color: "#EDEFEA", border: `1px solid ${loginLine}` };
     return (
-      <div className="h-screen w-full flex items-center justify-center relative overflow-hidden" style={{ background: activeTheme.bg }}>
+      <div className="h-screen w-full flex items-center justify-center relative overflow-hidden"
+        style={{ background: `radial-gradient(ellipse 900px 700px at 50% 0%, ${loginBg2}, ${loginBg} 70%)` }}>
         {fuentes}
         {bannerSinConexion}
-        {/* Resplandor sutil detrás del diagrama, único acento decorativo de la pantalla */}
+
+        {/* Anillos concéntricos decorativos, centrados detrás del contenido */}
+        <div className="absolute pointer-events-none" style={{ top: "-8%", left: "50%", transform: "translateX(-50%)", opacity: 0.9 }}>
+          <AnillosConcentricos color={loginGold} />
+        </div>
+
+        {/* Diagrama de jugada superior, sangrado fuera de la pantalla */}
+        <div className="absolute pointer-events-none" style={{ top: "-2%", left: "50%", transform: "translateX(-50%)" }}>
+          <PlayDiagramTop color={loginGold} dim={loginLine} />
+        </div>
+
+        {/* Diagrama de jugada inferior, sangrado fuera de la pantalla */}
+        <div className="absolute pointer-events-none" style={{ bottom: "-6%", left: "50%", transform: "translateX(-50%)", opacity: 0.8 }}>
+          <PlayDiagramBottom color={loginGold} dim={loginLine} />
+        </div>
+
+        {/* Resplandor sutil detrás del título */}
         <div className="absolute inset-0 pointer-events-none" style={{
-          background: `radial-gradient(ellipse 480px 320px at 50% 30%, ${activeTheme.offense}14, transparent 70%)`,
+          background: `radial-gradient(ellipse 480px 320px at 50% 42%, ${loginGold}12, transparent 70%)`,
         }} />
+
         <button onClick={toggleModo}
           className="fixed top-4 right-4 z-[60] w-10 h-10 rounded-full flex items-center justify-center"
-          style={{ background: activeTheme.surface, border: `1px solid ${activeTheme.border}`, color: activeTheme.textDim }}
+          style={{ background: "rgba(255,255,255,0.06)", border: `1px solid ${loginLine}`, color: loginGold }}
           aria-label="Cambiar modo claro/oscuro">
           {modoClaro ? <MoonIcon /> : <SunIcon />}
         </button>
+
         <div className="max-w-md w-full mx-auto px-5 max-h-[92vh] overflow-y-auto relative">
-          <div className="flex justify-center mb-1">
-            <PlayDiagram offense={activeTheme.text} defense={activeTheme.danger} linea={activeTheme.textDim} />
-          </div>
           {ligaElegida?.foto && (
             <div className="w-14 h-14 rounded-full overflow-hidden mx-auto mb-3 flex items-center justify-center"
-              style={{ background: activeTheme.surface2, border: `1px solid ${activeTheme.border}` }}>
+              style={{ background: "rgba(255,255,255,0.06)", border: `1px solid ${loginLine}` }}>
               <img src={ligaElegida.foto} alt="" className="w-full h-full object-cover" />
             </div>
           )}
           {!ligaElegida && pantallaLogin === "menu" && (
-            <div className="text-[11px] f-mono uppercase tracking-[0.15em] text-center mb-1" style={{ color: activeTheme.offense }}>Temporada 2026</div>
+            <div className="text-[11px] f-mono uppercase tracking-[0.2em] text-center mb-2" style={{ color: loginGoldSoft }}>Temporada 2026</div>
           )}
-          <div className="f-score font-extrabold text-center mb-1 uppercase" style={{ color: activeTheme.text, fontSize: "2.5rem", lineHeight: 1.02 }}>
+          <div className="f-score font-extrabold text-center mb-1 uppercase" style={{
+            fontSize: ligaElegida ? "2.5rem" : "2.7rem", lineHeight: 1.02,
+            backgroundImage: `linear-gradient(180deg, #F3D98B 0%, ${loginGold} 45%, ${loginGoldSoft} 100%)`,
+            WebkitBackgroundClip: "text", backgroundClip: "text", color: "transparent",
+            filter: "drop-shadow(0 2px 8px rgba(0,0,0,0.5))",
+          }}>
             {ligaElegida ? ligaElegida.nombre : "Football Manager"}
           </div>
-          <div className="text-sm text-center mb-7" style={{ color: activeTheme.textDim }}>
+          <div className="text-sm text-center mb-7" style={{ color: loginTextDim }}>
             {pantallaLogin === "menu" ? "Elige cómo quieres entrar"
               : pantallaLogin === "elegirLiga" ? "Selecciona tu liga"
               : pantallaLogin === "crearLiga" ? "Crea tu liga"
@@ -1632,19 +1833,22 @@ export default function App() {
             <div className="flex flex-col gap-3">
               <button onClick={() => abrirElegirLiga("organizador")}
                 className="w-full flex items-center gap-3 py-3.5 px-4 rounded-lg font-semibold text-sm"
-                style={{ background: activeTheme.offense, color: "#1A1305" }}>
+                style={{
+                  backgroundImage: `linear-gradient(180deg, #E9C36B 0%, ${loginGold} 55%, ${loginGoldSoft} 100%)`,
+                  color: "#241A05", boxShadow: "0 4px 14px rgba(201,162,39,0.35)",
+                }}>
                 <WhistleIcon size={17} />
                 Soy el organizador
               </button>
               <button onClick={() => abrirElegirLiga("equipo")}
                 className="w-full flex items-center gap-3 py-3.5 px-4 rounded-lg font-semibold text-sm"
-                style={{ background: activeTheme.surface, color: activeTheme.text, border: `1px solid ${activeTheme.border}` }}>
+                style={{ background: "rgba(255,255,255,0.04)", color: "#EDEFEA", border: `1px solid ${loginLine}` }}>
                 <PinIcon size={17} />
                 Tengo un PIN de equipo
               </button>
               <button onClick={() => abrirElegirLiga("visitante")}
                 className="w-full flex items-center gap-3 py-3.5 px-4 rounded-lg font-semibold text-sm"
-                style={{ background: "transparent", color: activeTheme.textDim, border: `1px solid ${activeTheme.border}` }}>
+                style={{ background: "rgba(255,255,255,0.02)", color: loginTextDim, border: `1px solid ${loginLine}` }}>
                 <EyeIcon size={17} />
                 Entrar como visitante
               </button>
@@ -1654,19 +1858,19 @@ export default function App() {
           {pantallaLogin === "elegirLiga" && (
             <div className="flex flex-col gap-2">
               {ligasIndice === null && (
-                <div className="text-xs text-center py-6" style={{ color: activeTheme.textDim }}>Cargando ligas…</div>
+                <div className="text-xs text-center py-6" style={{ color: loginTextDim }}>Cargando ligas…</div>
               )}
               {ligasIndice !== null && ligasIndice.length === 0 && (
-                <div className="text-xs text-center py-6" style={{ color: activeTheme.textDim }}>
+                <div className="text-xs text-center py-6" style={{ color: loginTextDim }}>
                   {contextoLogin === "organizador" ? "Todavía no hay ligas — crea la primera." : "Todavía no hay ninguna liga dada de alta."}
                 </div>
               )}
               {(ligasIndice || []).map((l) => (
                 <button key={l.id} onClick={() => elegirLigaExistente(l)}
                   className="w-full flex items-center gap-3 text-left py-3 px-4 rounded-lg text-sm font-semibold"
-                  style={{ background: activeTheme.surface, color: activeTheme.text, border: `1px solid ${activeTheme.border}` }}>
+                  style={{ background: "rgba(255,255,255,0.04)", color: "#EDEFEA", border: `1px solid ${loginLine}` }}>
                   <div className="w-9 h-9 rounded-full overflow-hidden shrink-0 flex items-center justify-center"
-                    style={{ background: activeTheme.surface2, border: `1px solid ${activeTheme.border}` }}>
+                    style={{ background: "rgba(255,255,255,0.06)", border: `1px solid ${loginLine}` }}>
                     {l.foto ? <img src={l.foto} alt="" className="w-full h-full object-cover" /> : null}
                   </div>
                   <span className="flex-1 truncate">{l.nombre}</span>
@@ -1675,27 +1879,27 @@ export default function App() {
               {contextoLogin === "organizador" && (
                 <button onClick={irACrearLiga}
                   className="w-full py-3 rounded-lg text-sm font-semibold mt-1"
-                  style={{ background: activeTheme.surface2, color: activeTheme.offense, border: `1px dashed ${activeTheme.border}` }}>
+                  style={{ background: "rgba(255,255,255,0.03)", color: loginGold, border: `1px dashed ${loginLine}` }}>
                   ＋ Crear una liga nueva
                 </button>
               )}
-              <button onClick={volverLogin} className="w-full py-2 text-xs font-medium mt-2" style={{ color: activeTheme.textDim }}>Volver</button>
+              <button onClick={volverLogin} className="w-full py-2 text-xs font-medium mt-2" style={{ color: loginTextDim }}>Volver</button>
             </div>
           )}
 
           {pantallaLogin === "crearLiga" && (
             <div className="flex flex-col gap-3">
               <input placeholder="Nombre de la liga" value={nombreLigaInput} onChange={(e) => setNombreLigaInput(e.target.value)}
-                className="w-full rounded-md px-3 py-3 text-sm outline-none" style={inputStyle} />
+                className="w-full rounded-md px-3 py-3 text-sm outline-none" style={loginInputStyle} />
               <input placeholder="Elige un PIN de organizador" value={pinCreadorInput}
                 onChange={(e) => setPinCreadorInput(e.target.value.replace(/[^0-9]/g, ""))}
-                className="w-full rounded-md px-3 py-3 text-sm outline-none f-mono text-center tracking-widest" style={inputStyle} />
-              {errorLogin && <div className="text-xs text-center" style={{ color: activeTheme.danger }}>{errorLogin}</div>}
+                className="w-full rounded-md px-3 py-3 text-sm outline-none f-mono text-center tracking-widest" style={loginInputStyle} />
+              {errorLogin && <div className="text-xs text-center" style={{ color: "#E0776A" }}>{errorLogin}</div>}
               <button onClick={crearLiga} disabled={creandoLiga} className="w-full py-3.5 rounded-lg font-semibold text-sm"
-                style={{ background: activeTheme.text, color: activeTheme.bg, opacity: creandoLiga ? 0.6 : 1 }}>
+                style={{ backgroundImage: `linear-gradient(180deg, #E9C36B 0%, ${loginGold} 55%, ${loginGoldSoft} 100%)`, color: "#241A05", opacity: creandoLiga ? 0.6 : 1 }}>
                 {creandoLiga ? "Creando…" : "Crear liga"}
               </button>
-              <button onClick={volverLogin} className="w-full py-2 text-xs font-medium" style={{ color: activeTheme.textDim }}>Volver</button>
+              <button onClick={volverLogin} className="w-full py-2 text-xs font-medium" style={{ color: loginTextDim }}>Volver</button>
             </div>
           )}
 
@@ -1703,12 +1907,12 @@ export default function App() {
             <div className="flex flex-col gap-3">
               <input placeholder="PIN de organizador" value={pinCreadorInput}
                 onChange={(e) => setPinCreadorInput(e.target.value.replace(/[^0-9]/g, ""))}
-                className="w-full rounded-md px-3 py-3 text-sm outline-none f-mono text-center tracking-widest" style={inputStyle} />
-              {errorLogin && <div className="text-xs text-center" style={{ color: activeTheme.danger }}>{errorLogin}</div>}
+                className="w-full rounded-md px-3 py-3 text-sm outline-none f-mono text-center tracking-widest" style={loginInputStyle} />
+              {errorLogin && <div className="text-xs text-center" style={{ color: "#E0776A" }}>{errorLogin}</div>}
               <button onClick={confirmarPinOrganizador} disabled={pinBloqueado} className="w-full py-3.5 rounded-lg font-semibold text-sm"
-                style={{ background: activeTheme.text, color: activeTheme.bg, opacity: pinBloqueado ? 0.5 : 1 }}>Entrar</button>
-              <button onClick={volverLogin} className="w-full py-2 text-xs font-medium" style={{ color: activeTheme.textDim }}>Volver</button>
-              <div className="text-[11px] text-center" style={{ color: activeTheme.textDim }}>Tu sesión se guardará en este dispositivo.</div>
+                style={{ backgroundImage: `linear-gradient(180deg, #E9C36B 0%, ${loginGold} 55%, ${loginGoldSoft} 100%)`, color: "#241A05", opacity: pinBloqueado ? 0.5 : 1 }}>Entrar</button>
+              <button onClick={volverLogin} className="w-full py-2 text-xs font-medium" style={{ color: loginTextDim }}>Volver</button>
+              <div className="text-[11px] text-center" style={{ color: loginTextDim }}>Tu sesión se guardará en este dispositivo.</div>
             </div>
           )}
 
@@ -1716,14 +1920,14 @@ export default function App() {
             <div className="flex flex-col gap-3">
               <input placeholder="PIN de tu equipo" value={pinEquipoInput}
                 onChange={(e) => setPinEquipoInput(e.target.value.replace(/[^0-9]/g, ""))}
-                className="w-full rounded-md px-3 py-3 text-sm outline-none f-mono text-center tracking-widest" style={inputStyle} />
-              {errorLogin && <div className="text-xs text-center" style={{ color: activeTheme.danger }}>{errorLogin}</div>}
+                className="w-full rounded-md px-3 py-3 text-sm outline-none f-mono text-center tracking-widest" style={loginInputStyle} />
+              {errorLogin && <div className="text-xs text-center" style={{ color: "#E0776A" }}>{errorLogin}</div>}
               <button onClick={confirmarPinEquipo} disabled={pinBloqueado || entrandoConPin} className="w-full py-3.5 rounded-lg font-semibold text-sm"
-                style={{ background: activeTheme.text, color: activeTheme.bg, opacity: pinBloqueado || entrandoConPin ? 0.5 : 1 }}>
+                style={{ backgroundImage: `linear-gradient(180deg, #E9C36B 0%, ${loginGold} 55%, ${loginGoldSoft} 100%)`, color: "#241A05", opacity: pinBloqueado || entrandoConPin ? 0.5 : 1 }}>
                 {entrandoConPin ? "Entrando…" : "Entrar"}
               </button>
-              <button onClick={volverLogin} className="w-full py-2 text-xs font-medium" style={{ color: activeTheme.textDim }}>Volver</button>
-              <div className="text-[11px] text-center" style={{ color: activeTheme.textDim }}>Tu sesión se guardará en este dispositivo.</div>
+              <button onClick={volverLogin} className="w-full py-2 text-xs font-medium" style={{ color: loginTextDim }}>Volver</button>
+              <div className="text-[11px] text-center" style={{ color: loginTextDim }}>Tu sesión se guardará en este dispositivo.</div>
             </div>
           )}
         </div>
@@ -2619,7 +2823,16 @@ export default function App() {
 
             {ligaSubTab === "posiciones" && (
               <div>
-                <div className="f-display text-lg font-bold uppercase mb-4" style={{ color: activeTheme.text }}>Tabla de posiciones</div>
+                <div className="flex items-center justify-between mb-4">
+                  <div className="f-display text-lg font-bold uppercase" style={{ color: activeTheme.text }}>Tabla de posiciones</div>
+                  {sesion.tipo === "creador" && (
+                    <button onClick={abrirModalDesempates}
+                      className="flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1.5 rounded-md shrink-0"
+                      style={{ background: activeTheme.surface2, color: activeTheme.textDim, border: `1px solid ${activeTheme.border}` }}>
+                      <GearIcon size={12} /> Desempates
+                    </button>
+                  )}
+                </div>
 
                 <div className="rounded-xl overflow-hidden mb-6" style={{ background: activeTheme.surface, border: `1px solid ${activeTheme.border}` }}>
                   <table className="w-full text-xs">
@@ -2649,8 +2862,11 @@ export default function App() {
                     </tbody>
                   </table>
                 </div>
-                <div className="text-[11px]" style={{ color: activeTheme.textDim }}>
+                <div className="text-[11px] mb-1" style={{ color: activeTheme.textDim }}>
                   La tabla se calcula automáticamente a partir de los marcadores guardados en el Calendario. Los juegos BYE no se contabilizan.
+                </div>
+                <div className="text-[11px]" style={{ color: activeTheme.textDim }}>
+                  Desempates: {criteriosDesempate.map((id) => CRITERIOS_DESEMPATE_DISPONIBLES.find((c) => c.id === id)?.label).filter(Boolean).join(" → ")}
                 </div>
               </div>
             )}
@@ -3390,6 +3606,57 @@ export default function App() {
                 <button onClick={cerrarModalCambiarPin} className="flex-1 py-3 rounded-lg font-semibold text-sm"
                   style={{ background: activeTheme.surface2, color: activeTheme.text, border: `1px solid ${activeTheme.border}` }}>Cancelar</button>
                 <button onClick={confirmarCambiarPin} className="flex-1 py-3 rounded-lg font-semibold text-sm"
+                  style={{ background: activeTheme.text, color: activeTheme.bg }}>Guardar</button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ============ MODAL: DESEMPATES DE LA TABLA (solo organizador) ============ */}
+        {modalDesempates && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
+            style={{ background: "rgba(6,8,7,0.75)" }} onClick={cerrarModalDesempates}>
+            <div className="w-full max-w-sm rounded-2xl p-5 overflow-hidden"
+              style={{ background: activeTheme.surface, border: `1px solid ${activeTheme.border}` }}
+              onClick={(e) => e.stopPropagation()}>
+              <div className="text-[11px] f-mono mb-2 uppercase tracking-wide" style={{ color: activeTheme.textDim }}>Desempates de la tabla</div>
+              <div className="text-xs mb-4" style={{ color: activeTheme.textDim }}>
+                Si dos o más equipos quedan empatados en victorias, se aplican estos criterios en el orden de la lista hasta romper el empate. Toca uno para activarlo o desactivarlo, y usa las flechas para reordenarlos.
+              </div>
+              <div className="flex flex-col gap-2 mb-4 max-h-[50vh] overflow-y-auto">
+                {CRITERIOS_DESEMPATE_DISPONIBLES.map((c) => {
+                  const idx = modalDesempates.indexOf(c.id);
+                  const activo = idx !== -1;
+                  return (
+                    <div key={c.id} className="flex items-center gap-2.5 rounded-lg px-3 py-2.5"
+                      style={{ background: activeTheme.surface2, border: `1px solid ${activeTheme.border}` }}>
+                      <button onClick={() => toggleCriterioDesempate(c.id)}
+                        className="w-5 h-5 rounded flex items-center justify-center shrink-0"
+                        style={{ background: activo ? activeTheme.offense : "transparent", border: `1.5px solid ${activo ? activeTheme.offense : activeTheme.border}` }}
+                        aria-label={activo ? "Desactivar criterio" : "Activar criterio"}>
+                        {activo && <span style={{ color: "#1A1305", fontSize: 11, fontWeight: 800, lineHeight: 1 }}>✓</span>}
+                      </button>
+                      <div className="flex-1 text-xs font-semibold" style={{ color: activo ? activeTheme.text : activeTheme.textDim }}>
+                        {activo ? `${idx + 1}. ` : ""}{c.label}
+                      </div>
+                      {activo && (
+                        <div className="flex gap-1 shrink-0">
+                          <button onClick={() => moverCriterioDesempate(idx, -1)} disabled={idx === 0}
+                            className="w-6 h-6 rounded flex items-center justify-center"
+                            style={{ color: activeTheme.textDim, opacity: idx === 0 ? 0.3 : 1 }} aria-label="Subir">▲</button>
+                          <button onClick={() => moverCriterioDesempate(idx, 1)} disabled={idx === modalDesempates.length - 1}
+                            className="w-6 h-6 rounded flex items-center justify-center"
+                            style={{ color: activeTheme.textDim, opacity: idx === modalDesempates.length - 1 ? 0.3 : 1 }} aria-label="Bajar">▼</button>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+              <div className="flex gap-2">
+                <button onClick={cerrarModalDesempates} className="flex-1 py-3 rounded-lg font-semibold text-sm"
+                  style={{ background: activeTheme.surface2, color: activeTheme.text, border: `1px solid ${activeTheme.border}` }}>Cancelar</button>
+                <button onClick={guardarModalDesempates} className="flex-1 py-3 rounded-lg font-semibold text-sm"
                   style={{ background: activeTheme.text, color: activeTheme.bg }}>Guardar</button>
               </div>
             </div>
