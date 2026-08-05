@@ -2370,6 +2370,18 @@ export default function App() {
             )}
           </div>
         </div>
+
+        <div className="mb-5">
+          <span className="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide px-2.5 py-1 rounded-full"
+            style={{
+              background: sesion.tipo === "creador" ? activeTheme.offense : sesion.tipo === "equipo" ? activeTheme.surface2 : "transparent",
+              color: sesion.tipo === "creador" ? "#1A1305" : activeTheme.textDim,
+              border: sesion.tipo === "creador" ? "none" : `1px ${sesion.tipo === "visitante" ? "dashed" : "solid"} ${activeTheme.border}`,
+            }}>
+            {sesion.tipo === "creador" ? <WhistleIcon size={12} /> : sesion.tipo === "equipo" ? <RosterIcon size={12} /> : <EyeIcon size={12} />}
+            {sesion.tipo === "creador" ? "Organizador" : sesion.tipo === "equipo" ? "Equipo" : "Visitante"}
+          </span>
+        </div>
         {sesion.tipo === "equipo" && (
           <div className="flex gap-3 f-mono text-[11px] mb-5 uppercase tracking-wide flex-wrap" style={{ color: activeTheme.textDim }}>
             <span>{ofensiva.length} Ofensiva</span>
@@ -3926,7 +3938,7 @@ export default function App() {
               onClick={(e) => e.stopPropagation()}>
               <div className="text-[11px] f-mono mb-2 uppercase tracking-wide" style={{ color: activeTheme.textDim }}>Formato de playoffs</div>
               <div className="text-xs mb-4" style={{ color: activeTheme.textDim }}>
-                Elige cuántos equipos clasifican según la tabla de posiciones. Al guardar se arma el bracket con el Sembrado 1 (mejor lugar) contra el ultimo clasificado, y así sucesivamente.
+                Elige cuántos equipos clasifican según la tabla de posiciones. Al guardar se arma el bracket con el sembrado 1 (mejor lugar) contra el último sembrado clasificado, y así sucesivamente.
               </div>
               <div className="flex flex-col gap-2 mb-2">
                 {FORMATOS_PLAYOFFS.map((f) => (
