@@ -1893,7 +1893,14 @@ export default function App() {
       /* Escala fluida: el tamaño de fuente raíz crece con el ancho de pantalla, y como casi todo el diseño
          usa unidades rem (Tailwind), textos, espaciados, íconos y bordes redondeados escalan juntos y
          automáticamente — de 16px en celular a 20px en pantallas grandes (~1600px+), sin tocar cada componente. */
-      html { font-size: clamp(16px, calc(16px + 0.25vw), 20px); }
+      html { font-size: clamp(16px, calc(16px + 0.15vw), 18px); }
+      /* La página que aloja la app centra todo el texto por defecto (#root { text-align: center }).
+         Esto rompe filas con flex (nombre pegado al avatar, etc.). Lo neutralizamos aquí: los elementos
+         explícitamente centrados (text-center de Tailwind) siguen funcionando igual, solo se corrige
+         el texto que no tenía alineación propia y heredaba el center por accidente. */
+      .nlf-app, .nlf-app * { text-align: left; }
+      .nlf-app .text-center { text-align: center !important; }
+      .nlf-app .text-right { text-align: right !important; }
     `}</style>
   );
 
@@ -1917,7 +1924,7 @@ export default function App() {
 
   if (!cargado) {
     return (
-      <div className="min-h-screen w-full flex items-center justify-center" style={{ background: activeTheme.bg }}>
+      <div className="min-h-screen w-full flex items-center justify-center nlf-app" style={{ background: activeTheme.bg }}>
         {fuentes}
         {bannerSinConexion}
         <div className="text-sm f-mono" style={{ color: activeTheme.textDim }}>Cargando…</div>
@@ -1935,7 +1942,7 @@ export default function App() {
     const loginTextDim = "#8A97AC";
     const loginInputStyle = { background: "rgba(255,255,255,0.05)", color: "#EDEFEA", border: `1px solid ${loginLine}` };
     return (
-      <div className="h-screen w-full flex items-center justify-center relative overflow-hidden"
+      <div className="h-screen w-full flex items-center justify-center relative overflow-hidden nlf-app"
         style={{ background: `radial-gradient(ellipse 900px 700px at 50% 0%, ${loginBg2}, ${loginBg} 70%)` }}>
         {fuentes}
         {bannerSinConexion}
@@ -2107,7 +2114,7 @@ export default function App() {
     const ofensivaEq = jugadoresEq.filter((j) => j.lado === "ofensiva");
     const defensivaEq = jugadoresEq.filter((j) => j.lado === "defensiva");
     return (
-      <div className="min-h-screen w-full" style={{ background: activeTheme.bg }}>
+      <div className="min-h-screen w-full nlf-app" style={{ background: activeTheme.bg }}>
         {fuentes}
         {bannerSinConexion}
         <div className="w-full mx-auto px-4 md:px-8 lg:px-12 xl:px-20 pb-24 pt-6">
@@ -2165,7 +2172,7 @@ export default function App() {
 
   if (vistaEquiposAbierta) {
     return (
-      <div className="min-h-screen w-full" style={{ background: activeTheme.bg }}>
+      <div className="min-h-screen w-full nlf-app" style={{ background: activeTheme.bg }}>
         {fuentes}
         {bannerSinConexion}
         <div className="w-full mx-auto px-4 md:px-8 lg:px-12 xl:px-20 pb-24 pt-6">
@@ -2299,7 +2306,7 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen w-full" style={{ background: activeTheme.bg }}>
+    <div className="min-h-screen w-full nlf-app" style={{ background: activeTheme.bg }}>
       {fuentes}
       {bannerSinConexion}
       <div className="w-full mx-auto px-4 md:px-8 lg:px-12 xl:px-20 pb-24 pt-6">
@@ -2443,7 +2450,7 @@ export default function App() {
         {tab === "plantilla" && (
           <div>
             <div className="flex items-center justify-between mb-4">
-              <div className="f-display text-lg md:text-2xl lg:text-3xl font-bold uppercase" style={{ color: activeTheme.text }}>Roster</div>
+              <div className="f-display text-lg md:text-xl lg:text-2xl font-bold uppercase" style={{ color: activeTheme.text }}>Roster</div>
               <button onClick={() => setModalJugadorAbierto(true)} disabled={fechaLimiteRosterPasada}
                 className="w-9 h-9 rounded-full flex items-center justify-center text-lg font-bold shrink-0"
                 style={{ background: activeTheme.text, color: activeTheme.bg, opacity: fechaLimiteRosterPasada ? 0.4 : 1 }}>+</button>
@@ -2475,7 +2482,7 @@ export default function App() {
 
             {[["Ofensiva", ofensiva], ["Defensiva", defensiva]].map(([titulo, lista]) => (
               <div key={titulo} className="mb-6">
-                <div className="f-display text-base md:text-xl lg:text-2xl font-bold mb-2 uppercase" style={{ color: activeTheme.text }}>{titulo}</div>
+                <div className="f-display text-base md:text-lg lg:text-xl font-bold mb-2 uppercase" style={{ color: activeTheme.text }}>{titulo}</div>
                 {lista.length === 0 && jugadores.length > 0 && <div className="text-sm py-3" style={{ color: activeTheme.textDim }}>Todavía no hay jugadores aquí.</div>}
                 <div className="flex flex-col gap-2">
                   {lista.map((j) => (
@@ -2711,7 +2718,7 @@ export default function App() {
         {tab === "jugadas" && eligiendoFormacion && (
           <div>
             <div className="flex items-center justify-between mb-4">
-              <div className="f-display text-lg md:text-2xl lg:text-3xl font-bold uppercase" style={{ color: activeTheme.text }}>Elegir formación</div>
+              <div className="f-display text-lg md:text-xl lg:text-2xl font-bold uppercase" style={{ color: activeTheme.text }}>Elegir formación</div>
               <button onClick={() => setEligiendoFormacion(null)} className="text-xs" style={{ color: activeTheme.textDim }}>Cancelar</button>
             </div>
             <div className="grid grid-cols-2 gap-3">
@@ -2808,7 +2815,7 @@ export default function App() {
         {tab === "calendario" && (
           <div>
             <div className="flex items-center justify-between mb-4">
-              <div className="f-display text-lg md:text-2xl lg:text-3xl font-bold uppercase" style={{ color: activeTheme.text }}>Calendario</div>
+              <div className="f-display text-lg md:text-xl lg:text-2xl font-bold uppercase" style={{ color: activeTheme.text }}>Calendario</div>
               {sesion.tipo === "creador" && (
                 <button onClick={abrirModalPartido}
                   className="w-9 h-9 rounded-full flex items-center justify-center text-lg font-bold shrink-0"
@@ -3015,7 +3022,7 @@ export default function App() {
             {ligaSubTab === "posiciones" && (
               <div>
                 <div className="flex items-center justify-between mb-4">
-                  <div className="f-display text-lg md:text-2xl lg:text-3xl font-bold uppercase" style={{ color: activeTheme.text }}>Tabla de posiciones</div>
+                  <div className="f-display text-lg md:text-xl lg:text-2xl font-bold uppercase" style={{ color: activeTheme.text }}>Tabla de posiciones</div>
                   {sesion.tipo === "creador" && (
                     <button onClick={abrirModalDesempates}
                       className="flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1.5 rounded-md shrink-0"
@@ -3070,7 +3077,7 @@ export default function App() {
             {ligaSubTab === "playoffs" && (
               <div>
                 <div className="flex items-center justify-between mb-4">
-                  <div className="f-display text-lg md:text-2xl lg:text-3xl font-bold uppercase" style={{ color: activeTheme.text }}>Playoffs</div>
+                  <div className="f-display text-lg md:text-xl lg:text-2xl font-bold uppercase" style={{ color: activeTheme.text }}>Playoffs</div>
                   {sesion.tipo === "creador" && (
                     <button onClick={abrirModalPlayoffs}
                       className="flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1.5 rounded-md shrink-0"
@@ -3194,7 +3201,7 @@ export default function App() {
                 {/* -------- mejor ofensiva -------- */}
                 {statsSlide === 0 && (
                   <div>
-                    <div className="f-display text-base md:text-xl lg:text-2xl font-bold uppercase mb-2 text-center" style={{ color: activeTheme.text }}>Mejor ofensiva</div>
+                    <div className="f-display text-base md:text-lg lg:text-xl font-bold uppercase mb-2 text-center" style={{ color: activeTheme.text }}>Mejor ofensiva</div>
                     <div className="rounded-xl overflow-hidden" style={{ background: activeTheme.surface, border: `1px solid ${activeTheme.border}` }}>
                       {mejorOfensiva.length === 0 && (
                         <div className="text-xs p-4 text-center" style={{ color: activeTheme.textDim }}>Sin datos todavía — captura marcadores en el Calendario.</div>
@@ -3235,7 +3242,7 @@ export default function App() {
                 {/* -------- mejor defensa -------- */}
                 {statsSlide === 1 && (
                   <div>
-                    <div className="f-display text-base md:text-xl lg:text-2xl font-bold uppercase mb-2 text-center" style={{ color: activeTheme.text }}>Mejor defensa</div>
+                    <div className="f-display text-base md:text-lg lg:text-xl font-bold uppercase mb-2 text-center" style={{ color: activeTheme.text }}>Mejor defensa</div>
                     <div className="rounded-xl overflow-hidden" style={{ background: activeTheme.surface, border: `1px solid ${activeTheme.border}` }}>
                       {mejorDefensiva.length === 0 && (
                         <div className="text-xs p-4 text-center" style={{ color: activeTheme.textDim }}>Sin datos todavía — captura marcadores en el Calendario.</div>
@@ -3277,7 +3284,7 @@ export default function App() {
                 {statsSlide === 2 && (
                   <div>
                     <div className="relative mb-2">
-                      <div className="f-display text-base md:text-xl lg:text-2xl font-bold uppercase text-center" style={{ color: activeTheme.text }}>Máximos anotadores</div>
+                      <div className="f-display text-base md:text-lg lg:text-xl font-bold uppercase text-center" style={{ color: activeTheme.text }}>Máximos anotadores</div>
                       {sesion.tipo === "creador" && (
                         <button onClick={abrirModalAnotador}
                           className="absolute right-0 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full flex items-center justify-center text-base font-bold shrink-0"
@@ -3430,7 +3437,7 @@ export default function App() {
               </div>
             )}
 
-            <div className="f-display text-lg md:text-2xl lg:text-3xl font-bold uppercase mb-4" style={{ color: activeTheme.text }}>Roster</div>
+            <div className="f-display text-lg md:text-xl lg:text-2xl font-bold uppercase mb-4" style={{ color: activeTheme.text }}>Roster</div>
             {equipos.length === 0 && (
               <div className="text-sm py-3" style={{ color: activeTheme.textDim }}>Todavía no hay equipos en la liga.</div>
             )}
