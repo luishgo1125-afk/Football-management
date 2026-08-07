@@ -1947,7 +1947,7 @@ export default function App() {
           {modoClaro ? <MoonIcon /> : <SunIcon />}
         </button>
 
-        <div className="max-w-md w-full mx-auto px-5 max-h-[92vh] overflow-y-auto relative">
+        <div className="max-w-md md:max-w-lg w-full mx-auto px-5 max-h-[92vh] overflow-y-auto relative">
           {ligaElegida?.foto && (
             <div className="w-14 h-14 rounded-full overflow-hidden mx-auto mb-3 flex items-center justify-center"
               style={{ background: "rgba(255,255,255,0.06)", border: `1px solid ${loginLine}` }}>
@@ -2090,7 +2090,7 @@ export default function App() {
       <div className="min-h-screen w-full" style={{ background: activeTheme.bg }}>
         {fuentes}
         {bannerSinConexion}
-        <div className="max-w-md mx-auto px-4 pb-24 pt-6">
+        <div className="max-w-md md:max-w-2xl mx-auto px-4 md:px-8 pb-24 pt-6">
           <div className="relative mb-8">
             <button onClick={() => setModalRosterEquipo(null)}
               className="absolute left-0 top-0 w-10 h-10 rounded-full flex items-center justify-center shrink-0"
@@ -2148,7 +2148,7 @@ export default function App() {
       <div className="min-h-screen w-full" style={{ background: activeTheme.bg }}>
         {fuentes}
         {bannerSinConexion}
-        <div className="max-w-md mx-auto px-4 pb-24 pt-6">
+        <div className="max-w-md md:max-w-2xl mx-auto px-4 md:px-8 pb-24 pt-6">
           <div className="flex items-center gap-3 mb-6">
             <button onClick={() => setVistaEquiposAbierta(false)}
               className="w-10 h-10 rounded-full flex items-center justify-center shrink-0"
@@ -2282,7 +2282,7 @@ export default function App() {
     <div className="min-h-screen w-full" style={{ background: activeTheme.bg }}>
       {fuentes}
       {bannerSinConexion}
-      <div className="max-w-md mx-auto px-4 pb-24 pt-6">
+      <div className="max-w-md md:max-w-2xl mx-auto px-4 md:px-8 pb-24 pt-6">
 
         {/* encabezado */}
         <div className="flex items-center gap-3 mb-1">
