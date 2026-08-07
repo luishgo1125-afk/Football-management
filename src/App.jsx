@@ -464,6 +464,54 @@ function formatearFechaNacimiento(fechaStr) {
   return `${txt} (${edad} años)`;
 }
 
+const MESES_NOMBRE = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+
+/* Selector de fecha simple con tres <select> (Día / Mes / Año) en vez del selector nativo del navegador
+   (que sale en inglés y con un calendario grande incómodo en escritorio). `value` y `onChange` usan
+   el mismo formato "YYYY-MM-DD" que un <input type="date">, así que es un reemplazo directo. */
+function SelectorFecha({ value, onChange, inputStyle, anioMin, anioMax }) {
+  const [yIni, mIni, dIni] = (value || "").split("-");
+  const [dia, setDia] = useState(dIni ? String(Number(dIni)) : "");
+  const [mes, setMes] = useState(mIni || "");
+  const [anio, setAnio] = useState(yIni || "");
+
+  const maxAnio = anioMax || new Date().getFullYear();
+  const minAnio = anioMin || maxAnio - 90;
+  const anios = [];
+  for (let a = maxAnio; a >= minAnio; a--) anios.push(a);
+  const dias = Array.from({ length: 31 }, (_, i) => i + 1);
+
+  const actualizar = (campo, val) => {
+    const nuevo = { dia, mes, anio, [campo]: val };
+    if (campo === "dia") setDia(val); else if (campo === "mes") setMes(val); else setAnio(val);
+    if (nuevo.dia && nuevo.mes && nuevo.anio) {
+      onChange(`${nuevo.anio}-${nuevo.mes}-${String(nuevo.dia).padStart(2, "0")}`);
+    } else {
+      onChange("");
+    }
+  };
+
+  return (
+    <div className="flex gap-1.5">
+      <select value={dia} onChange={(e) => actualizar("dia", e.target.value)}
+        className="w-[64px] shrink-0 rounded-md px-1.5 py-2 text-sm outline-none" style={inputStyle}>
+        <option value="">Día</option>
+        {dias.map((d) => <option key={d} value={d}>{d}</option>)}
+      </select>
+      <select value={mes} onChange={(e) => actualizar("mes", e.target.value)}
+        className="flex-1 min-w-0 rounded-md px-1.5 py-2 text-sm outline-none" style={inputStyle}>
+        <option value="">Mes</option>
+        {MESES_NOMBRE.map((m, i) => <option key={m} value={String(i + 1).padStart(2, "0")}>{m}</option>)}
+      </select>
+      <select value={anio} onChange={(e) => actualizar("anio", e.target.value)}
+        className="w-[84px] shrink-0 rounded-md px-1.5 py-2 text-sm outline-none" style={inputStyle}>
+        <option value="">Año</option>
+        {anios.map((a) => <option key={a} value={a}>{a}</option>)}
+      </select>
+    </div>
+  );
+}
+
 /* Rango de fechas de una lista de partidos (para el subtítulo de cada jornada) */
 function rangoFechas(items) {
   const fechas = items.map((i) => i.fecha).filter(Boolean).sort();
@@ -1901,6 +1949,9 @@ export default function App() {
       .nlf-app, .nlf-app * { text-align: left; }
       .nlf-app .text-center { text-align: center !important; }
       .nlf-app .text-right { text-align: right !important; }
+      /* Los botones de la app dan por hecho que su texto queda centrado (así se diseñaron), sin llevar
+         explícitamente la clase text-center — se los devolvemos aquí para no tener que tocar cada botón */
+      .nlf-app button { text-align: center; }
     `}</style>
   );
 
@@ -2536,18 +2587,18 @@ export default function App() {
                 <input placeholder="#" value={numero} onChange={(e) => setNumero(e.target.value.replace(/[^0-9]/g, ""))}
                   className="w-16 shrink-0 rounded-md px-2 py-2 text-sm outline-none f-mono text-center" style={inputStyle} />
               </div>
-              <div className="flex gap-2 mb-4">
-                <select value={posicion} onChange={(e) => setPosicion(e.target.value)}
-                  className="flex-1 min-w-0 rounded-md px-3 py-2 text-sm outline-none" style={inputStyle}>
-                  <optgroup label="Ofensiva">
-                    {POSICIONES.ofensiva.map((p) => <option key={p} value={p}>{p} — {NOMBRES_POSICION[p]}</option>)}
-                  </optgroup>
-                  <optgroup label="Defensiva">
-                    {POSICIONES.defensiva.map((p) => <option key={p} value={p}>{p} — {NOMBRES_POSICION[p]}</option>)}
-                  </optgroup>
-                </select>
-                <input type="date" value={fechaNacimiento} onChange={(e) => setFechaNacimiento(e.target.value)}
-                  className="w-[136px] shrink-0 rounded-md px-2 py-2 text-sm outline-none" style={inputStyle} />
+              <select value={posicion} onChange={(e) => setPosicion(e.target.value)}
+                className="w-full rounded-md px-3 py-2 text-sm outline-none mb-3" style={inputStyle}>
+                <optgroup label="Ofensiva">
+                  {POSICIONES.ofensiva.map((p) => <option key={p} value={p}>{p} — {NOMBRES_POSICION[p]}</option>)}
+                </optgroup>
+                <optgroup label="Defensiva">
+                  {POSICIONES.defensiva.map((p) => <option key={p} value={p}>{p} — {NOMBRES_POSICION[p]}</option>)}
+                </optgroup>
+              </select>
+              <div className="mb-4">
+                <div className="text-[10px] f-mono uppercase tracking-wide mb-1" style={{ color: activeTheme.textDim }}>Fecha de nacimiento</div>
+                <SelectorFecha value={fechaNacimiento} onChange={setFechaNacimiento} inputStyle={inputStyle} />
               </div>
               <div className="flex gap-2">
                 <button onClick={() => setModalJugadorAbierto(false)} className="flex-1 py-3 rounded-lg font-semibold text-sm"
@@ -2628,9 +2679,8 @@ export default function App() {
                     </div>
                     <div>
                       <div className="text-[10px] f-mono uppercase tracking-wide mb-1 text-left" style={{ color: activeTheme.textDim }}>Fecha de nacimiento</div>
-                      <input type="date" value={jugadorModal.fechaNacimiento || ""}
-                        onChange={(e) => actualizarCampoModal("fechaNacimiento", e.target.value)}
-                        className="w-[152px] rounded-md px-2 py-2 text-sm outline-none" style={inputStyle} />
+                      <SelectorFecha value={jugadorModal.fechaNacimiento || ""}
+                        onChange={(v) => actualizarCampoModal("fechaNacimiento", v)} inputStyle={inputStyle} />
                     </div>
                   </div>
                   <div className="flex gap-2">
