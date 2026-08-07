@@ -451,6 +451,19 @@ function formatearFechaCorta(fechaStr) {
   return dt.toLocaleDateString("es-ES", { day: "numeric", month: "short" });
 }
 
+/* Formatea una fecha de nacimiento (con año) y calcula la edad actual, para la ficha del jugador */
+function formatearFechaNacimiento(fechaStr) {
+  if (!fechaStr) return "";
+  const [y, m, d] = fechaStr.split("-").map(Number);
+  if (!y || !m || !d) return fechaStr;
+  const dt = new Date(y, m - 1, d);
+  const txt = dt.toLocaleDateString("es-ES", { day: "numeric", month: "short", year: "numeric" });
+  let edad = new Date().getFullYear() - y;
+  const hoy = new Date();
+  if (hoy.getMonth() + 1 < m || (hoy.getMonth() + 1 === m && hoy.getDate() < d)) edad -= 1;
+  return `${txt} (${edad} años)`;
+}
+
 /* Rango de fechas de una lista de partidos (para el subtítulo de cada jornada) */
 function rangoFechas(items) {
   const fechas = items.map((i) => i.fecha).filter(Boolean).sort();
@@ -523,7 +536,7 @@ function calcularTablaLiga(partidosLiga, equipoPropio, criteriosDesempate = CRIT
     .map((id) => CRITERIOS_DESEMPATE_DISPONIBLES.find((c) => c.id === id))
     .filter(Boolean);
   return Object.values(stats)
-    .map((row) => ({ ...row, esPropio: row.nombre === equipoPropio }))
+    .map((row) => ({ ...row, esPropio: row.nombre === equipoPropio, pts: row.g * 2 + row.e * 1 }))
     .sort((a, b) => {
       for (const criterio of criterios) {
         const r = criterio.cmp(a, b, partidosLiga);
@@ -831,6 +844,7 @@ export default function App() {
   const [nombre, setNombre] = useState("");
   const [numero, setNumero] = useState("");
   const [posicion, setPosicion] = useState("QB");
+  const [fechaNacimiento, setFechaNacimiento] = useState("");
   const [fotoNueva, setFotoNueva] = useState(null);
   const inputFotoNueva = useRef(null);
   const inputFotoEquipo = useRef(null);
@@ -1360,9 +1374,9 @@ export default function App() {
     if (!nombre.trim()) return;
     setJugadores((js) => [...js, {
       id: uid(), nombre: nombre.trim(), numero: numero.trim() || "--",
-      posicion, lado: posASide(posicion), foto: fotoNueva,
+      posicion, lado: posASide(posicion), foto: fotoNueva, fechaNacimiento: fechaNacimiento || "",
     }]);
-    setNombre(""); setNumero(""); setFotoNueva(null);
+    setNombre(""); setNumero(""); setFotoNueva(null); setFechaNacimiento("");
     setModalJugadorAbierto(false);
   };
   const eliminarJugador = (id) => {
@@ -1438,6 +1452,7 @@ export default function App() {
       posicion: jugadorModal.posicion,
       lado: posASide(jugadorModal.posicion),
       foto: jugadorModal.foto,
+      fechaNacimiento: jugadorModal.fechaNacimiento || "",
     } : j)));
     setJugadorModal(null);
   };
@@ -2404,7 +2419,7 @@ export default function App() {
         {/* tabs */}
         <div className="flex gap-1 mb-6 p-1 rounded-lg" style={{ background: activeTheme.surface, border: `1px solid ${activeTheme.border}` }}>
           {(sesion.tipo === "equipo"
-            ? [["plantilla", "Roster"], ["calendario", "Calendario"], ["liga", "Liga"], ["jugadas", "Playbook"]]
+            ? [["plantilla", "Roster"], ["calendario", "Calendario"], ["liga", "Liga"]]
             : sesion.tipo === "creador"
             ? [["calendario", "Calendario"], ["roster", "Roster"], ["liga", "Liga"]]
             : [["calendario", "Calendario"], ["roster", "Roster"], ["liga", "Liga"]]
@@ -2428,7 +2443,7 @@ export default function App() {
         {tab === "plantilla" && (
           <div>
             <div className="flex items-center justify-between mb-4">
-              <div className="f-display text-lg font-bold uppercase" style={{ color: activeTheme.text }}>Roster</div>
+              <div className="f-display text-lg md:text-2xl lg:text-3xl font-bold uppercase" style={{ color: activeTheme.text }}>Roster</div>
               <button onClick={() => setModalJugadorAbierto(true)} disabled={fechaLimiteRosterPasada}
                 className="w-9 h-9 rounded-full flex items-center justify-center text-lg font-bold shrink-0"
                 style={{ background: activeTheme.text, color: activeTheme.bg, opacity: fechaLimiteRosterPasada ? 0.4 : 1 }}>+</button>
@@ -2460,7 +2475,7 @@ export default function App() {
 
             {[["Ofensiva", ofensiva], ["Defensiva", defensiva]].map(([titulo, lista]) => (
               <div key={titulo} className="mb-6">
-                <div className="f-display text-base font-bold mb-2 uppercase" style={{ color: activeTheme.text }}>{titulo}</div>
+                <div className="f-display text-base md:text-xl lg:text-2xl font-bold mb-2 uppercase" style={{ color: activeTheme.text }}>{titulo}</div>
                 {lista.length === 0 && jugadores.length > 0 && <div className="text-sm py-3" style={{ color: activeTheme.textDim }}>Todavía no hay jugadores aquí.</div>}
                 <div className="flex flex-col gap-2">
                   {lista.map((j) => (
@@ -2514,15 +2529,19 @@ export default function App() {
                 <input placeholder="#" value={numero} onChange={(e) => setNumero(e.target.value.replace(/[^0-9]/g, ""))}
                   className="w-16 shrink-0 rounded-md px-2 py-2 text-sm outline-none f-mono text-center" style={inputStyle} />
               </div>
-              <select value={posicion} onChange={(e) => setPosicion(e.target.value)}
-                className="w-full rounded-md px-3 py-2 text-sm outline-none mb-4" style={inputStyle}>
-                <optgroup label="Ofensiva">
-                  {POSICIONES.ofensiva.map((p) => <option key={p} value={p}>{p} — {NOMBRES_POSICION[p]}</option>)}
-                </optgroup>
-                <optgroup label="Defensiva">
-                  {POSICIONES.defensiva.map((p) => <option key={p} value={p}>{p} — {NOMBRES_POSICION[p]}</option>)}
-                </optgroup>
-              </select>
+              <div className="flex gap-2 mb-4">
+                <select value={posicion} onChange={(e) => setPosicion(e.target.value)}
+                  className="flex-1 min-w-0 rounded-md px-3 py-2 text-sm outline-none" style={inputStyle}>
+                  <optgroup label="Ofensiva">
+                    {POSICIONES.ofensiva.map((p) => <option key={p} value={p}>{p} — {NOMBRES_POSICION[p]}</option>)}
+                  </optgroup>
+                  <optgroup label="Defensiva">
+                    {POSICIONES.defensiva.map((p) => <option key={p} value={p}>{p} — {NOMBRES_POSICION[p]}</option>)}
+                  </optgroup>
+                </select>
+                <input type="date" value={fechaNacimiento} onChange={(e) => setFechaNacimiento(e.target.value)}
+                  className="w-[136px] shrink-0 rounded-md px-2 py-2 text-sm outline-none" style={inputStyle} />
+              </div>
               <div className="flex gap-2">
                 <button onClick={() => setModalJugadorAbierto(false)} className="flex-1 py-3 rounded-lg font-semibold text-sm"
                   style={{ background: activeTheme.surface2, color: activeTheme.text, border: `1px solid ${activeTheme.border}` }}>Cancelar</button>
@@ -2557,6 +2576,9 @@ export default function App() {
                       <span className="text-xs" style={{ color: activeTheme.textDim }}>{NOMBRES_POSICION[jugadorModal.posicion]}</span>
                       <span className="text-sm f-mono font-bold" style={{ color: activeTheme.textDim }}>#{jugadorModal.numero}</span>
                     </div>
+                    {jugadorModal.fechaNacimiento && (
+                      <div className="text-xs f-mono mt-2" style={{ color: activeTheme.textDim }}>{formatearFechaNacimiento(jugadorModal.fechaNacimiento)}</div>
+                    )}
                   </div>
                   <div className="flex gap-2">
                     <button onClick={cerrarModalJugador} className="flex-1 py-3 rounded-lg font-semibold text-sm"
@@ -2588,7 +2610,7 @@ export default function App() {
                         onChange={(e) => actualizarCampoModal("numero", e.target.value.replace(/[^0-9]/g, ""))}
                         className="w-20 rounded-md px-2 py-2 text-sm outline-none f-mono text-center" style={inputStyle} />
                       <select value={jugadorModal.posicion} onChange={(e) => actualizarCampoModal("posicion", e.target.value)}
-                        className="flex-1 rounded-md px-3 py-2 text-sm outline-none" style={inputStyle}>
+                        className="flex-1 min-w-0 rounded-md px-3 py-2 text-sm outline-none" style={inputStyle}>
                         <optgroup label="Ofensiva">
                           {POSICIONES.ofensiva.map((p) => <option key={p} value={p}>{p} — {NOMBRES_POSICION[p]}</option>)}
                         </optgroup>
@@ -2596,6 +2618,12 @@ export default function App() {
                           {POSICIONES.defensiva.map((p) => <option key={p} value={p}>{p} — {NOMBRES_POSICION[p]}</option>)}
                         </optgroup>
                       </select>
+                    </div>
+                    <div>
+                      <div className="text-[10px] f-mono uppercase tracking-wide mb-1 text-left" style={{ color: activeTheme.textDim }}>Fecha de nacimiento</div>
+                      <input type="date" value={jugadorModal.fechaNacimiento || ""}
+                        onChange={(e) => actualizarCampoModal("fechaNacimiento", e.target.value)}
+                        className="w-[152px] rounded-md px-2 py-2 text-sm outline-none" style={inputStyle} />
                     </div>
                   </div>
                   <div className="flex gap-2">
@@ -2683,7 +2711,7 @@ export default function App() {
         {tab === "jugadas" && eligiendoFormacion && (
           <div>
             <div className="flex items-center justify-between mb-4">
-              <div className="f-display text-lg font-bold uppercase" style={{ color: activeTheme.text }}>Elegir formación</div>
+              <div className="f-display text-lg md:text-2xl lg:text-3xl font-bold uppercase" style={{ color: activeTheme.text }}>Elegir formación</div>
               <button onClick={() => setEligiendoFormacion(null)} className="text-xs" style={{ color: activeTheme.textDim }}>Cancelar</button>
             </div>
             <div className="grid grid-cols-2 gap-3">
@@ -2780,7 +2808,7 @@ export default function App() {
         {tab === "calendario" && (
           <div>
             <div className="flex items-center justify-between mb-4">
-              <div className="f-display text-lg font-bold uppercase" style={{ color: activeTheme.text }}>Calendario</div>
+              <div className="f-display text-lg md:text-2xl lg:text-3xl font-bold uppercase" style={{ color: activeTheme.text }}>Calendario</div>
               {sesion.tipo === "creador" && (
                 <button onClick={abrirModalPartido}
                   className="w-9 h-9 rounded-full flex items-center justify-center text-lg font-bold shrink-0"
@@ -2936,6 +2964,7 @@ export default function App() {
                                 <div className="flex flex-col items-center gap-1.5 min-w-0 px-2">
                                   <div className="text-xs f-mono text-center" style={{ color: activeTheme.textDim }}>{formatearFecha(p.fecha)}</div>
                                   {p.hora && <div className="text-xs f-mono text-center" style={{ color: activeTheme.textDim }}>{formatearHora(p.hora)}</div>}
+                                  <div className="text-xs f-mono font-bold text-center" style={{ color: activeTheme.textDim }}>VS</div>
                                   {r && (
                                     <span className="text-[11px] px-2 py-1 rounded font-bold f-mono uppercase mt-0.5"
                                       style={{ background: colorResultado(r), color: "#0A0D0C" }}>{textoResultado(r)}</span>
@@ -2986,7 +3015,7 @@ export default function App() {
             {ligaSubTab === "posiciones" && (
               <div>
                 <div className="flex items-center justify-between mb-4">
-                  <div className="f-display text-lg font-bold uppercase" style={{ color: activeTheme.text }}>Tabla de posiciones</div>
+                  <div className="f-display text-lg md:text-2xl lg:text-3xl font-bold uppercase" style={{ color: activeTheme.text }}>Tabla de posiciones</div>
                   {sesion.tipo === "creador" && (
                     <button onClick={abrirModalDesempates}
                       className="flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1.5 rounded-md shrink-0"
@@ -3007,6 +3036,7 @@ export default function App() {
                         <th className="text-center py-2 px-1 f-mono uppercase" style={{ color: activeTheme.textDim }}>P</th>
                         <th className="text-center py-2 px-1 f-mono uppercase" style={{ color: activeTheme.textDim }}>E</th>
                         <th className="text-center py-2 px-1 f-mono uppercase" style={{ color: activeTheme.textDim }}>DIF</th>
+                        <th className="text-center py-2 px-1 f-mono uppercase" style={{ color: activeTheme.textDim }}>PTS</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -3019,6 +3049,7 @@ export default function App() {
                           <td className="text-center py-2 px-1 f-mono" style={{ color: activeTheme.danger }}>{eq.p}</td>
                           <td className="text-center py-2 px-1 f-mono" style={{ color: activeTheme.textDim }}>{eq.e}</td>
                           <td className="text-center py-2 px-1 f-mono" style={{ color: activeTheme.text }}>{eq.pf - eq.pc > 0 ? "+" : ""}{eq.pf - eq.pc}</td>
+                          <td className="text-center py-2 px-1 f-mono font-bold" style={{ color: activeTheme.offense }}>{eq.pts}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -3026,6 +3057,9 @@ export default function App() {
                 </div>
                 <div className="text-[11px] mb-1" style={{ color: activeTheme.textDim }}>
                   La tabla se calcula automáticamente a partir de los marcadores guardados en el Calendario. Los juegos BYE no se contabilizan.
+                </div>
+                <div className="text-[11px] mb-1" style={{ color: activeTheme.textDim }}>
+                  PTS: 2 por victoria, 1 por empate.
                 </div>
                 <div className="text-[11px]" style={{ color: activeTheme.textDim }}>
                   Desempates: {criteriosDesempate.map((id) => CRITERIOS_DESEMPATE_DISPONIBLES.find((c) => c.id === id)?.label).filter(Boolean).join(" → ")}
@@ -3036,7 +3070,7 @@ export default function App() {
             {ligaSubTab === "playoffs" && (
               <div>
                 <div className="flex items-center justify-between mb-4">
-                  <div className="f-display text-lg font-bold uppercase" style={{ color: activeTheme.text }}>Playoffs</div>
+                  <div className="f-display text-lg md:text-2xl lg:text-3xl font-bold uppercase" style={{ color: activeTheme.text }}>Playoffs</div>
                   {sesion.tipo === "creador" && (
                     <button onClick={abrirModalPlayoffs}
                       className="flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1.5 rounded-md shrink-0"
@@ -3160,7 +3194,7 @@ export default function App() {
                 {/* -------- mejor ofensiva -------- */}
                 {statsSlide === 0 && (
                   <div>
-                    <div className="f-display text-base font-bold uppercase mb-2 text-center" style={{ color: activeTheme.text }}>Mejor ofensiva</div>
+                    <div className="f-display text-base md:text-xl lg:text-2xl font-bold uppercase mb-2 text-center" style={{ color: activeTheme.text }}>Mejor ofensiva</div>
                     <div className="rounded-xl overflow-hidden" style={{ background: activeTheme.surface, border: `1px solid ${activeTheme.border}` }}>
                       {mejorOfensiva.length === 0 && (
                         <div className="text-xs p-4 text-center" style={{ color: activeTheme.textDim }}>Sin datos todavía — captura marcadores en el Calendario.</div>
@@ -3201,7 +3235,7 @@ export default function App() {
                 {/* -------- mejor defensa -------- */}
                 {statsSlide === 1 && (
                   <div>
-                    <div className="f-display text-base font-bold uppercase mb-2 text-center" style={{ color: activeTheme.text }}>Mejor defensa</div>
+                    <div className="f-display text-base md:text-xl lg:text-2xl font-bold uppercase mb-2 text-center" style={{ color: activeTheme.text }}>Mejor defensa</div>
                     <div className="rounded-xl overflow-hidden" style={{ background: activeTheme.surface, border: `1px solid ${activeTheme.border}` }}>
                       {mejorDefensiva.length === 0 && (
                         <div className="text-xs p-4 text-center" style={{ color: activeTheme.textDim }}>Sin datos todavía — captura marcadores en el Calendario.</div>
@@ -3243,7 +3277,7 @@ export default function App() {
                 {statsSlide === 2 && (
                   <div>
                     <div className="relative mb-2">
-                      <div className="f-display text-base font-bold uppercase text-center" style={{ color: activeTheme.text }}>Máximos anotadores</div>
+                      <div className="f-display text-base md:text-xl lg:text-2xl font-bold uppercase text-center" style={{ color: activeTheme.text }}>Máximos anotadores</div>
                       {sesion.tipo === "creador" && (
                         <button onClick={abrirModalAnotador}
                           className="absolute right-0 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full flex items-center justify-center text-base font-bold shrink-0"
@@ -3396,7 +3430,7 @@ export default function App() {
               </div>
             )}
 
-            <div className="f-display text-lg font-bold uppercase mb-4" style={{ color: activeTheme.text }}>Roster</div>
+            <div className="f-display text-lg md:text-2xl lg:text-3xl font-bold uppercase mb-4" style={{ color: activeTheme.text }}>Roster</div>
             {equipos.length === 0 && (
               <div className="text-sm py-3" style={{ color: activeTheme.textDim }}>Todavía no hay equipos en la liga.</div>
             )}
