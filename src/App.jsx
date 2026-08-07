@@ -1869,11 +1869,16 @@ export default function App() {
       body, input, select, button { font-family:'Inter',sans-serif; }
       /* Evita el zoom automático de iOS/Android al enfocar campos (ocurre si el font-size es menor a 16px) */
       input, select, textarea { font-size: 16px !important; }
-      /* Excepción: el nombre del equipo/liga en el encabezado debe verse grande (text-3xl = 30px), no 16px */
-      .header-name-input { font-size: 30px !important; }
+      /* Excepción: el nombre del equipo/liga en el encabezado debe verse grande (text-3xl = 30px base), no 16px.
+         En rem para que también escale con el tamaño de fuente raíz fluido. */
+      .header-name-input { font-size: 1.875rem !important; }
       /* Variantes para nombres largos — el tamaño se ajusta automáticamente según la longitud del texto */
-      .header-name-md { font-size: 23px !important; }
-      .header-name-sm { font-size: 18px !important; }
+      .header-name-md { font-size: 1.4375rem !important; }
+      .header-name-sm { font-size: 1.125rem !important; }
+      /* Escala fluida: el tamaño de fuente raíz crece con el ancho de pantalla, y como casi todo el diseño
+         usa unidades rem (Tailwind), textos, espaciados, íconos y bordes redondeados escalan juntos y
+         automáticamente — de 16px en celular a 20px en pantallas grandes (~1600px+), sin tocar cada componente. */
+      html { font-size: clamp(16px, calc(16px + 0.25vw), 20px); }
     `}</style>
   );
 
@@ -2326,7 +2331,7 @@ export default function App() {
             <div className="f-display font-bold w-full leading-tight"
               style={{
                 color: activeTheme.text,
-                fontSize: (ligaNombre || "Visitante").length > 22 ? 18 : (ligaNombre || "Visitante").length > 14 ? 23 : 30,
+                fontSize: (ligaNombre || "Visitante").length > 22 ? "1.125rem" : (ligaNombre || "Visitante").length > 14 ? "1.4375rem" : "1.875rem",
                 display: "-webkit-box",
                 WebkitLineClamp: 2,
                 WebkitBoxOrient: "vertical",
