@@ -2090,7 +2090,7 @@ export default function App() {
       <div className="min-h-screen w-full" style={{ background: activeTheme.bg }}>
         {fuentes}
         {bannerSinConexion}
-        <div className="max-w-md md:max-w-2xl mx-auto px-4 md:px-8 pb-24 pt-6">
+        <div className="w-full mx-auto px-4 md:px-8 lg:px-12 xl:px-20 pb-24 pt-6">
           <div className="relative mb-8">
             <button onClick={() => setModalRosterEquipo(null)}
               className="absolute left-0 top-0 w-10 h-10 rounded-full flex items-center justify-center shrink-0"
@@ -2148,7 +2148,7 @@ export default function App() {
       <div className="min-h-screen w-full" style={{ background: activeTheme.bg }}>
         {fuentes}
         {bannerSinConexion}
-        <div className="max-w-md md:max-w-2xl mx-auto px-4 md:px-8 pb-24 pt-6">
+        <div className="w-full mx-auto px-4 md:px-8 lg:px-12 xl:px-20 pb-24 pt-6">
           <div className="flex items-center gap-3 mb-6">
             <button onClick={() => setVistaEquiposAbierta(false)}
               className="w-10 h-10 rounded-full flex items-center justify-center shrink-0"
@@ -2282,7 +2282,7 @@ export default function App() {
     <div className="min-h-screen w-full" style={{ background: activeTheme.bg }}>
       {fuentes}
       {bannerSinConexion}
-      <div className="max-w-md md:max-w-2xl mx-auto px-4 md:px-8 pb-24 pt-6">
+      <div className="w-full mx-auto px-4 md:px-8 lg:px-12 xl:px-20 pb-24 pt-6">
 
         {/* encabezado */}
         <div className="flex items-center gap-3 mb-1">
